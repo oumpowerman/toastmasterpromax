@@ -33,7 +33,8 @@ export const useToastData = (
         channel: l.channel,
         date: l.transaction_date,
         slipImage: l.slip_image,
-        note: l.note
+        note: l.note,
+        items: l.items || [] // Map items from DB
     });
 
     // --- HELPER: FETCH INVENTORY & BATCHES ---

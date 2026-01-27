@@ -108,6 +108,7 @@ export interface LedgerItem {
   amount: number;
   channel?: 'cash' | 'transfer' | 'delivery' | 'other';
   slipItems?: { name: string; price: number }[];
+  items?: any[]; // New: Stores the full list of items in the transaction
   slipImage?: string;
   note?: string;
 }
@@ -192,7 +193,7 @@ export interface Order {
     id: string;
     queueNumber: number;
     timestamp: string;
-    status: 'pending' | 'cooking' | 'completed' | 'cancelled';
+    status: 'pending' | 'cooking' | 'served' | 'completed' | 'cancelled'; // Updated Status
     items: OrderItem[];
     totalPrice: number;
     netTotal: number;

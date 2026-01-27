@@ -71,6 +71,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             setPaymentChannel(initialData.channel || 'cash');
             setSlipImage(initialData.slipImage || null);
             setIsSplitMode(false); // Default to simple editing
+            
+            // Load Items if available
+            if (initialData.items && Array.isArray(initialData.items)) {
+                setBillItems(initialData.items);
+            } else {
+                setBillItems([]);
+            }
         } else {
             // Reset for New Entry
             setBillItems([]);
@@ -198,8 +205,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                 category: cat,
                 channel: paymentChannel,
                 slipImage,
-                // Pass assetData only if this group contains asset/new items that need special handling?
-                // Actually stock creation is handled by 'stockDeductions' array passed to parent.
+                // Pass items list for persistence
+                items: items,
                 assetData: undefined 
             });
 

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ChefHat, X, Utensils, Clock, FileEdit, Plus, CheckCircle2 } from 'lucide-react';
+import { ChefHat, X, Utensils, Clock, FileEdit, Plus, CheckCircle2, ChevronRight } from 'lucide-react';
 import { Order } from '../../../../types';
 
 export const KitchenDisplay: React.FC<{
@@ -9,8 +9,12 @@ export const KitchenDisplay: React.FC<{
     shiftDate: string;
     activeOrders: Order[];
     updateOrderStatus: (id: string, status: Order['status']) => void;
-}> = ({ isOpen, onClose, shiftDate, activeOrders, updateOrderStatus }) => {
+    onPaymentRequest?: (order: Order) => void; // New Prop
+}> = ({ isOpen, onClose, shiftDate, activeOrders, updateOrderStatus, onPaymentRequest }) => {
     if (!isOpen) return null;
+
+    // Show orders that are cooking or pending
+    const cookingOrders = activeOrders.filter(o => o.status === 'cooking' || o.status === 'pending');
 
     return (
         <div className="fixed inset-0 z-[60] flex bg-stone-900/95 backdrop-blur-md p-6 overflow-hidden animate-in fade-in">
@@ -26,13 +30,13 @@ export const KitchenDisplay: React.FC<{
                 
                 <div className="flex-1 overflow-x-auto overflow-y-hidden pb-4 custom-scrollbar">
                     <div className="flex gap-4 h-full">
-                        {activeOrders.length === 0 ? (
+                        {cookingOrders.length === 0 ? (
                             <div className="m-auto text-center text-white/30">
                                 <Utensils size={80} className="mx-auto mb-4"/>
-                                <p className="text-2xl font-bold">ไม่มีออเดอร์ค้าง (ของวันนี้)</p>
+                                <p className="text-2xl font-bold">ไม่มีรายการทำอาหารค้างอยู่</p>
                             </div>
                         ) : (
-                            activeOrders.map(order => (
+                            cookingOrders.map(order => (
                                 <div key={order.id} className="w-[320px] bg-white rounded-3xl shrink-0 flex flex-col overflow-hidden shadow-2xl h-full border-4 border-stone-800 relative snap-center">
                                     <div className="bg-stone-800 text-white p-5 flex justify-between items-center">
                                         <div>
@@ -73,12 +77,22 @@ export const KitchenDisplay: React.FC<{
                                         ))}
                                     </div>
 
-                                    <button 
-                                        onClick={() => updateOrderStatus(order.id, 'completed')}
-                                        className="p-6 bg-green-500 hover:bg-green-600 text-white font-bold text-2xl transition-colors flex items-center justify-center gap-2"
-                                    >
-                                        <CheckCircle2 size={32}/> เสร็จแล้ว (Done)
-                                    </button>
+                                    <div className="grid grid-cols-2 gap-2 p-2 bg-stone-100">
+                                        <button 
+                                            onClick={() => updateOrderStatus(order.id, 'served')}
+                                            className="py-4 bg-white border-2 border-stone-200 text-stone-500 hover:text-green-600 hover:border-green-400 rounded-2xl font-bold text-sm transition-colors flex flex-col items-center justify-center gap-1"
+                                        >
+                                            <CheckCircle2 size={20}/>
+                                            แค่เสิร์ฟ (ยังไม่จ่าย)
+                                        </button>
+                                        <button 
+                                            onClick={() => onPaymentRequest && onPaymentRequest(order)}
+                                            className="py-4 bg-green-500 hover:bg-green-600 text-white rounded-2xl font-bold text-lg transition-colors flex flex-col items-center justify-center gap-1 shadow-lg shadow-green-200"
+                                        >
+                                            <ChevronRight size={24}/>
+                                            คิดเงินเลย
+                                        </button>
+                                    </div>
                                 </div>
                             ))
                         )}

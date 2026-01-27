@@ -20,12 +20,22 @@ export const useFinanceActions = (
             channel: item.channel,
             transaction_date: item.date,
             slip_image: item.slipImage,
-            note: item.note
+            note: item.note,
+            items: item.items // Save items list
         }).select().single();
 
         if (data) {
             setState(prev => ({ ...prev, ledger: [{ 
-                id: data.id, title: data.title, amount: data.amount, type: data.type, category: data.category, channel: data.channel, date: data.transaction_date, slipImage: data.slip_image, note: data.note 
+                id: data.id, 
+                title: data.title, 
+                amount: data.amount, 
+                type: data.type, 
+                category: data.category, 
+                channel: data.channel, 
+                date: data.transaction_date, 
+                slipImage: data.slip_image, 
+                note: data.note,
+                items: data.items || item.items // Ensure items are stored in local state
             }, ...prev.ledger] }));
         }
     };
@@ -40,6 +50,7 @@ export const useFinanceActions = (
         if (updates.category) payload.category = updates.category;
         if (updates.date) payload.transaction_date = updates.date;
         if (updates.channel) payload.channel = updates.channel;
+        if (updates.items) payload.items = updates.items; // Allow items update
         
         await supabase.from('ledger').update(payload).eq('id', id);
     };

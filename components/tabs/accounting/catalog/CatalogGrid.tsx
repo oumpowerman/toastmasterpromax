@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Archive, Armchair, Box, Calculator, Plus, Wheat, Banknote, Coffee, Utensils } from 'lucide-react';
+import { Archive, Armchair, Box, Calculator, Plus, Wheat, Banknote, Coffee, Utensils, Tag } from 'lucide-react';
 import { Supplier } from '../../../../types';
 
 interface CatalogGridProps {
@@ -78,9 +78,19 @@ const CatalogGrid: React.FC<CatalogGridProps> = ({
                                 {getItemIcon(item)}
                             </div>
                         )}
+                        
                         <div className="w-full min-w-0">
                             <p className={`font-bold text-stone-700 text-xs leading-tight ${viewMode === 'grid' ? 'line-clamp-2' : 'truncate'}`}>{item.name}</p>
                             
+                            {/* --- LIST VIEW EXTRA DETAILS --- */}
+                            {viewMode === 'list' && activeTab === 'menu' && (
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-[10px] text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                        <Tag size={10}/> {item.category || 'General'}
+                                    </span>
+                                </div>
+                            )}
+
                             {activeTab === 'menu' ? (
                                 <p className="text-[10px] text-emerald-500 mt-1 font-bold">
                                     ฿{price}

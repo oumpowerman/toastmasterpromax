@@ -6,7 +6,7 @@ import { useToastMasterApp } from './hooks/useToastMasterApp';
 // Components
 import Sidebar from './components/Sidebar';
 import AuthScreen from './components/Auth';
-import ModeSelector from './components/ModeSelector'; // NEW
+import ModeSelector from './components/ModeSelector';
 
 // Tabs
 import RealDashboard from './components/tabs/RealDashboard'; 
@@ -132,6 +132,9 @@ const App: React.FC = () => {
                 state={state} 
                 processOrder={actions.processOrder}
                 updateOrderStatus={actions.updateOrderStatus}
+                // CRITICAL: Passing these actions is what connects the UI to the Logic
+                sendOrderToKitchen={actions.sendOrderToKitchen} 
+                collectPayment={actions.collectPayment}
             />
             )}
             {activeTab === 'checklist' && (
@@ -155,8 +158,8 @@ const App: React.FC = () => {
                 menuItems={state.menuItems}
                 inventory={state.inventory}
                 updateInventory={actions.updateInventory}
-                addSingleItem={actions.addSingleItem} // Passed
-                addSupplier={actions.addSupplier} // NEW: Pass addSupplier
+                addSingleItem={actions.addSingleItem} 
+                addSupplier={actions.addSupplier} 
             />
             )}
             {activeTab === 'shopping' && (
@@ -184,7 +187,7 @@ const App: React.FC = () => {
                 taxonomy={state.assetTaxonomy}
                 onUpdateTaxonomy={actions.updateAssetTaxonomy}
                 activeShopId={state.activeShopId || session.user.id}
-                isSimMode={appMode === 'sim'} // PASS SIM MODE PROP
+                isSimMode={appMode === 'sim'} 
             />
             )}
 
@@ -193,7 +196,7 @@ const App: React.FC = () => {
             <MasterSetup 
                 state={derivedState} 
                 updateNestedState={derivedActions.updateNestedState}
-                addEquipment={actions.addEquipment} // Shared?
+                addEquipment={actions.addEquipment} 
                 updateEquipment={actions.updateEquipment}
                 removeEquipment={actions.removeEquipment}
                 results={results}
@@ -206,16 +209,16 @@ const App: React.FC = () => {
                 showHelper={showHelper}
                 setShowHelper={setShowHelper}
                 realCost={results.realCost}
-                addMenu={actions.addMenu} // Shared creation, but update is targetted
+                addMenu={actions.addMenu} 
                 updateMenu={derivedActions.updateMenu}
                 deleteMenu={actions.deleteMenu}
                 addIngredientToMenu={derivedActions.addIngredientToMenu}
                 updateIngredientInMenu={derivedActions.updateIngredientInMenu}
                 removeIngredientFromMenu={derivedActions.removeIngredientFromMenu}
-                addCentralIngredient={actions.addCentralIngredient} // Shared
+                addCentralIngredient={actions.addCentralIngredient} 
                 updateCentralIngredient={actions.updateCentralIngredient}
                 deleteCentralIngredient={actions.deleteCentralIngredient}
-                isSimMode={appMode === 'sim'} // PASS SIM MODE PROP
+                isSimMode={appMode === 'sim'}
             />
             )}
             {activeTab === 'pricing' && (

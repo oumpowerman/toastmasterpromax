@@ -1,6 +1,6 @@
 
 import React, { memo, useState, useMemo } from 'react';
-import { Calendar, FileText, LogOut, Search, ChefHat, Utensils, Plus, ShoppingBag, Minus, Trash2, ArrowRight, History, Flame, LayoutGrid, List, Tag, Edit3, Settings2 } from 'lucide-react';
+import { Calendar, FileText, LogOut, Search, ChefHat, Utensils, Plus, ShoppingBag, Minus, Trash2, ArrowRight, History, Flame, LayoutGrid, List, Tag, Edit3, Settings2, Receipt, ReceiptText } from 'lucide-react';
 import { MenuItem, OrderItem } from '../../../types';
 import { MODIFIERS } from './constants';
 
@@ -20,8 +20,8 @@ interface MenuGridProps {
     onOpenAllHistory: () => void;
     onOpenKDS: () => void;
     expiringMenuIds?: Set<string>; 
-    separateItems: boolean; // New Prop
-    setSeparateItems: (val: boolean) => void; // New Prop
+    separateItems: boolean; 
+    setSeparateItems: (val: boolean) => void; 
 }
 
 export const MenuGrid = memo<MenuGridProps>(({
@@ -289,32 +289,45 @@ interface CartPanelProps {
     removeCartItem: (id: string) => void;
     cartTotal: number;
     onCheckout: () => void;
+    // New Props for Post-Paid Flow
+    activeBillId?: string | null;
+    activeBillQ?: number | null;
+    onOpenWaitingBills?: () => void;
+    waitingCount?: number;
 }
 
 export const CartPanel = memo<CartPanelProps>(({
-    cart, nextQueue, orderType, setOrderType, shiftTotalSales, onOpenShiftHistory, onClearCart, updateCartItemNote, toggleModifier, updateCartQty, removeCartItem, cartTotal, onCheckout
+    cart, nextQueue, orderType, setOrderType, shiftTotalSales, onOpenShiftHistory, onClearCart, updateCartItemNote, toggleModifier, updateCartQty, removeCartItem, cartTotal, onCheckout,
+    activeBillId, activeBillQ, onOpenWaitingBills, waitingCount = 0
 }) => {
+    
+    const isEditMode = !!activeBillId;
+
     return (
-        <div className="w-full xl:w-[420px] flex flex-col bg-white rounded-[2.5rem] border-2 border-stone-100 shadow-xl overflow-hidden relative shrink-0 h-[40vh] xl:h-auto">
+        <div className={`w-full xl:w-[420px] flex flex-col bg-white rounded-[2.5rem] border-4 shadow-xl overflow-hidden relative shrink-0 h-[40vh] xl:h-auto transition-colors duration-300 ${isEditMode ? 'border-green-200' : 'border-stone-100'}`}>
             
             {/* Cart Header */}
-            <div className="p-6 bg-stone-800 text-white flex justify-between items-center shadow-md z-10 shrink-0">
+            <div className={`p-6 text-white flex justify-between items-center shadow-md z-10 shrink-0 transition-colors duration-300 ${isEditMode ? 'bg-green-600' : 'bg-stone-800'}`}>
                 <div>
                     <div className="flex items-center gap-3 mb-1">
-                        <h3 className="text-2xl font-bold font-cute">บิลปัจจุบัน</h3>
-                        <span className="bg-stone-700 px-3 py-1 rounded-lg text-sm font-bold text-stone-300">Q #{nextQueue}</span>
+                        <h3 className="text-2xl font-bold font-cute">{isEditMode ? 'รับเงิน (Pay)' : 'ออเดอร์ใหม่'}</h3>
+                        <span className={`px-3 py-1 rounded-lg text-sm font-bold ${isEditMode ? 'bg-green-700 text-green-100' : 'bg-stone-700 text-stone-300'}`}>
+                            Q #{isEditMode ? activeBillQ : nextQueue}
+                        </span>
                     </div>
                     <div className="flex gap-2 mt-2">
-                        <button onClick={() => setOrderType('take_away')} className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${orderType === 'take_away' ? 'bg-orange-500 text-white shadow-md' : 'bg-stone-700 text-stone-400 hover:text-white'}`}>กลับบ้าน</button>
-                        <button onClick={() => setOrderType('dine_in')} className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${orderType === 'dine_in' ? 'bg-green-500 text-white shadow-md' : 'bg-stone-700 text-stone-400 hover:text-white'}`}>ทานร้าน</button>
+                        <button onClick={() => setOrderType('take_away')} className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${orderType === 'take_away' ? 'bg-white text-stone-800 shadow-md' : 'bg-black/20 text-white/60 hover:bg-black/40'}`}>กลับบ้าน</button>
+                        <button onClick={() => setOrderType('dine_in')} className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${orderType === 'dine_in' ? 'bg-white text-stone-800 shadow-md' : 'bg-black/20 text-white/60 hover:bg-black/40'}`}>ทานร้าน</button>
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={onOpenShiftHistory} className="text-stone-400 hover:text-white p-3 hover:bg-white/10 rounded-full transition-colors relative" title="ประวัติบิล">
-                        <History size={24} />
-                        {shiftTotalSales > 0 && <div className="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full"></div>}
-                    </button>
-                    <button onClick={onClearCart} className="text-stone-400 hover:text-red-400 p-3 hover:bg-white/10 rounded-full transition-colors" title="ล้างบิล">
+                    {onOpenWaitingBills && (
+                        <button onClick={onOpenWaitingBills} className="text-white p-3 hover:bg-white/10 rounded-full transition-colors relative group" title="บิลรอจ่าย">
+                            <ReceiptText size={24} />
+                            {waitingCount > 0 && <div className="absolute top-2 right-2 min-w-[1rem] h-4 flex items-center justify-center bg-orange-500 rounded-full text-[10px] border border-white font-bold">{waitingCount}</div>}
+                        </button>
+                    )}
+                    <button onClick={onClearCart} className="text-white/60 hover:text-red-200 p-3 hover:bg-white/10 rounded-full transition-colors" title="ล้างบิล">
                         <Trash2 size={24} />
                     </button>
                 </div>
@@ -338,7 +351,7 @@ export const CartPanel = memo<CartPanelProps>(({
                             key={item.id} 
                             className="relative rounded-[1.5rem] shadow-sm animate-in slide-in-from-right-2 group overflow-hidden border border-stone-100 bg-white"
                         >
-                            {/* Background Image Overlay (Updated Opacity 20%) */}
+                            {/* Background Image Overlay */}
                             {item.image && (
                                 <div 
                                     className="absolute inset-0 z-0 opacity-40 bg-cover bg-center"
@@ -346,7 +359,7 @@ export const CartPanel = memo<CartPanelProps>(({
                                 ></div>
                             )}
                             
-                            {/* Content Layer (Removed White BG) */}
+                            {/* Content Layer */}
                             <div className="relative z-10 p-4 bg-white/40 backdrop-blur-[1px]">
                                 <div className="flex justify-between items-start mb-2">
                                     <div className="flex-1 pr-2">
@@ -402,16 +415,27 @@ export const CartPanel = memo<CartPanelProps>(({
             {/* Total & Action */}
             <div className="p-6 bg-white border-t border-stone-100 space-y-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-10 shrink-0">
                 <div className="flex justify-between items-end">
-                    <span className="text-stone-500 font-bold text-lg uppercase mb-1">ยอดรวมสุทธิ</span>
-                    <span className="text-6xl font-black text-stone-800 tracking-tight leading-none">฿{cartTotal.toLocaleString()}</span>
+                    <span className="text-stone-500 font-bold uppercase text-lg mb-1">ยอดรวมสุทธิ</span>
+                    <span className="text-6xl font-black text-stone-800 tracking-tighter leading-none">฿{cartTotal.toLocaleString()}</span>
                 </div>
-                <button 
-                    onClick={onCheckout}
-                    disabled={cart.length === 0}
-                    className="w-full py-6 bg-stone-800 text-white rounded-2xl font-bold text-3xl shadow-lg hover:bg-stone-900 hover:-translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 active:scale-95"
-                >
-                    รับเงิน <ArrowRight size={32} />
-                </button>
+                
+                {isEditMode ? (
+                    <button 
+                        onClick={onCheckout}
+                        disabled={cart.length === 0}
+                        className="w-full py-6 bg-green-500 text-white rounded-2xl font-bold text-3xl shadow-lg hover:bg-green-600 hover:-translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 active:scale-95 shadow-green-200"
+                    >
+                        💰 รับเงิน (Pay)
+                    </button>
+                ) : (
+                    <button 
+                        onClick={onCheckout}
+                        disabled={cart.length === 0}
+                        className="w-full py-6 bg-orange-500 text-white rounded-2xl font-bold text-3xl shadow-lg hover:bg-orange-600 hover:-translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 active:scale-95 shadow-orange-200"
+                    >
+                        🔥 ส่งเข้าครัว (Send)
+                    </button>
+                )}
             </div>
         </div>
     );

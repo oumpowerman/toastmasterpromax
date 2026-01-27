@@ -1,14 +1,26 @@
 
 import React, { useEffect } from 'react';
-import { Search, Package, Armchair, Plus, Calculator, Wheat, Box, Banknote, Coffee, Sparkles } from 'lucide-react';
+import { Search, Package, Armchair, Plus, Calculator, Wheat, Box, Banknote, Coffee, Sparkles, LayoutGrid, List, Filter } from 'lucide-react';
 
 interface CatalogHeaderProps {
     activeTab: 'stock' | 'assets' | 'services' | 'new' | 'menu';
     setActiveTab: (tab: 'stock' | 'assets' | 'services' | 'new' | 'menu') => void;
     searchTerm: string;
     setSearchTerm: (term: string) => void;
+    
+    // Stock Filters
     stockFilter: 'all' | 'ingredient' | 'packaging';
     setStockFilter: (filter: 'all' | 'ingredient' | 'packaging') => void;
+    
+    // Menu Filters (NEW)
+    menuFilter: string;
+    setMenuFilter: (cat: string) => void;
+    menuCategories: string[];
+
+    // View Mode (NEW)
+    viewMode: 'grid' | 'list';
+    setViewMode: (mode: 'grid' | 'list') => void;
+
     bulkMode: boolean;
     setBulkMode: (mode: boolean) => void;
     type: 'income' | 'expense';
@@ -19,6 +31,8 @@ const CatalogHeader: React.FC<CatalogHeaderProps> = ({
     activeTab, setActiveTab,
     searchTerm, setSearchTerm,
     stockFilter, setStockFilter,
+    menuFilter, setMenuFilter, menuCategories,
+    viewMode, setViewMode,
     bulkMode, setBulkMode,
     type, selectedSupplierId
 }) => {
@@ -73,35 +87,65 @@ const CatalogHeader: React.FC<CatalogHeaderProps> = ({
 
             {/* Search & Sub Filters */}
             {activeTab !== 'new' && (
-                <div className="flex gap-2">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={18}/>
-                        <input 
-                            type="text" 
-                            placeholder={activeTab === 'menu' ? "ค้นหาเมนู..." : activeTab === 'services' ? "ค้นหารายการ..." : selectedSupplierId ? "ค้นหาสินค้าในร้านนี้..." : "ค้นหา..."}
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-white border border-stone-200 rounded-xl font-bold text-stone-600 outline-none focus:border-orange-300 text-sm shadow-sm"
-                        />
+                <div className="flex flex-col gap-3">
+                    <div className="flex gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={18}/>
+                            <input 
+                                type="text" 
+                                placeholder={activeTab === 'menu' ? "ค้นหาเมนู..." : activeTab === 'services' ? "ค้นหารายการ..." : selectedSupplierId ? "ค้นหาสินค้าในร้านนี้..." : "ค้นหา..."}
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-white border border-stone-200 rounded-xl font-bold text-stone-600 outline-none focus:border-orange-300 text-sm shadow-sm"
+                            />
+                        </div>
+                        
+                        {/* VIEW MODE TOGGLE */}
+                        <div className="flex bg-white rounded-xl border border-stone-200 p-1 shrink-0">
+                            <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-stone-100 text-stone-800' : 'text-stone-400'}`} title="Grid"><LayoutGrid size={18}/></button>
+                            <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-stone-100 text-stone-800' : 'text-stone-400'}`} title="List"><List size={18}/></button>
+                        </div>
+
+                        {/* BULK MODE TOGGLE (Only in Expense & Stock Tab) */}
+                        {type === 'expense' && activeTab === 'stock' && (
+                            <button 
+                                onClick={() => setBulkMode(!bulkMode)}
+                                className={`px-3 rounded-xl border font-bold text-xs flex flex-col items-center justify-center gap-0.5 transition-all ${bulkMode ? 'bg-purple-600 text-white border-purple-600 shadow-md' : 'bg-white text-stone-400 border-stone-200 hover:border-purple-300'}`}
+                                title="โหมดซื้อยกแพ็ค (คำนวณราคาต่อชิ้นอัตโนมัติ)"
+                            >
+                                <Calculator size={16}/>
+                                <span className="hidden md:inline">{bulkMode ? 'ซื้อยกแพ็ค' : 'ซื้อปกติ'}</span>
+                            </button>
+                        )}
                     </div>
-                    
-                    {/* BULK MODE TOGGLE (Only in Expense & Stock Tab) */}
-                    {type === 'expense' && activeTab === 'stock' && (
-                        <button 
-                            onClick={() => setBulkMode(!bulkMode)}
-                            className={`px-3 rounded-xl border font-bold text-xs flex flex-col items-center justify-center gap-0.5 transition-all ${bulkMode ? 'bg-purple-600 text-white border-purple-600 shadow-md' : 'bg-white text-stone-400 border-stone-200 hover:border-purple-300'}`}
-                            title="โหมดซื้อยกแพ็ค (คำนวณราคาต่อชิ้นอัตโนมัติ)"
-                        >
-                            <Calculator size={16}/>
-                            <span>{bulkMode ? 'ซื้อยกแพ็ค' : 'ซื้อปกติ'}</span>
-                        </button>
+
+                    {/* SUB FILTERS ROW */}
+                    {activeTab === 'stock' && !bulkMode && (
+                        <div className="flex bg-white rounded-xl border border-stone-200 p-1 shrink-0 w-fit">
+                            <button onClick={() => setStockFilter('all')} className={`px-3 py-1.5 rounded-lg transition-colors text-xs font-bold ${stockFilter === 'all' ? 'bg-stone-100 text-stone-800' : 'text-stone-400'}`} title="ทั้งหมด">All</button>
+                            <button onClick={() => setStockFilter('ingredient')} className={`px-3 py-1.5 rounded-lg transition-colors text-xs font-bold flex items-center gap-1 ${stockFilter === 'ingredient' ? 'bg-orange-50 text-orange-500' : 'text-stone-400'}`} title="วัตถุดิบ"><Wheat size={14}/> วัตถุดิบ</button>
+                            <button onClick={() => setStockFilter('packaging')} className={`px-3 py-1.5 rounded-lg transition-colors text-xs font-bold flex items-center gap-1 ${stockFilter === 'packaging' ? 'bg-blue-50 text-blue-500' : 'text-stone-400'}`} title="บรรจุภัณฑ์"><Box size={14}/> แพ็คเกจ</button>
+                        </div>
                     )}
 
-                    {activeTab === 'stock' && !bulkMode && (
-                        <div className="flex bg-white rounded-xl border border-stone-200 p-1 shrink-0">
-                            <button onClick={() => setStockFilter('all')} className={`p-1.5 rounded-lg transition-colors ${stockFilter === 'all' ? 'bg-stone-100 text-stone-800' : 'text-stone-400'}`} title="ทั้งหมด">All</button>
-                            <button onClick={() => setStockFilter('ingredient')} className={`p-1.5 rounded-lg transition-colors ${stockFilter === 'ingredient' ? 'bg-orange-50 text-orange-500' : 'text-stone-400'}`} title="วัตถุดิบ"><Wheat size={16}/></button>
-                            <button onClick={() => setStockFilter('packaging')} className={`p-1.5 rounded-lg transition-colors ${stockFilter === 'packaging' ? 'bg-blue-50 text-blue-500' : 'text-stone-400'}`} title="บรรจุภัณฑ์"><Box size={16}/></button>
+                    {/* MENU FILTERS (NEW) */}
+                    {activeTab === 'menu' && (
+                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                            <button 
+                                onClick={() => setMenuFilter('all')} 
+                                className={`px-3 py-1.5 rounded-xl border font-bold text-xs whitespace-nowrap transition-all ${menuFilter === 'all' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-stone-200 text-stone-400'}`}
+                            >
+                                ทั้งหมด
+                            </button>
+                            {menuCategories.map(cat => (
+                                <button 
+                                    key={cat}
+                                    onClick={() => setMenuFilter(cat)}
+                                    className={`px-3 py-1.5 rounded-xl border font-bold text-xs whitespace-nowrap transition-all ${menuFilter === cat ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-stone-200 text-stone-400'}`}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
                         </div>
                     )}
                 </div>

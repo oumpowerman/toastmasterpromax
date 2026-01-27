@@ -48,6 +48,7 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({
     
     // Filter State
     const [stockFilter, setStockFilter] = useState<'all' | 'ingredient' | 'packaging'>('all');
+    const [menuFilter, setMenuFilter] = useState<string>('all'); // NEW: Menu Category Filter
 
     // Bulk Mode State (Default to true for Calculator mode)
     const [bulkMode, setBulkMode] = useState(true);
@@ -58,6 +59,12 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({
         if (type === 'income') setActiveTab('menu');
         else setActiveTab('stock');
     }, [type]);
+
+    // NEW: Extract Menu Categories
+    const menuCategories = useMemo(() => {
+        const cats = new Set(menuItems.map(m => m.category || 'General'));
+        return Array.from(cats).sort();
+    }, [menuItems]);
 
     // --- FILTER LOGIC ---
     const filteredItems = useMemo(() => {
@@ -96,7 +103,14 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({
         
         // 2. MENU TAB (Income Only)
         if (activeTab === 'menu') {
-            return menuItems.filter(m => m.name.toLowerCase().includes(lowerSearch));
+            let candidates = menuItems;
+            
+            // Apply Menu Category Filter
+            if (menuFilter !== 'all') {
+                candidates = candidates.filter(m => (m.category || 'General') === menuFilter);
+            }
+
+            return candidates.filter(m => m.name.toLowerCase().includes(lowerSearch));
         }
 
         // 3. ASSETS TAB (Expense Only)
@@ -111,7 +125,7 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({
         }
 
         return [];
-    }, [activeTab, stockFilter, searchTerm, selectedSupplierId, centralIngredients, inventory, menuItems, type, suppliers]);
+    }, [activeTab, stockFilter, menuFilter, searchTerm, selectedSupplierId, centralIngredients, inventory, menuItems, type, suppliers]);
 
 
     // --- HANDLERS ---
@@ -210,6 +224,8 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({
                 activeTab={activeTab} setActiveTab={setActiveTab}
                 searchTerm={searchTerm} setSearchTerm={setSearchTerm}
                 stockFilter={stockFilter} setStockFilter={setStockFilter}
+                menuFilter={menuFilter} setMenuFilter={setMenuFilter} menuCategories={menuCategories}
+                viewMode={viewMode} setViewMode={setViewMode}
                 bulkMode={bulkMode} setBulkMode={setBulkMode}
                 type={type} selectedSupplierId={selectedSupplierId}
             />
