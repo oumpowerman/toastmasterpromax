@@ -1,8 +1,8 @@
 
-import React, { useState, useMemo } from 'react';
-import { InventoryItem, IngredientLibraryItem, Supplier } from '../../../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { InventoryItem, IngredientLibraryItem, Supplier, MenuItem } from '../../../types';
 import { StockDeductionItem } from './TransactionForm';
-import { Home, Zap, Truck, Users, Megaphone, Wrench, FileText, Flame } from 'lucide-react';
+import { Home, Zap, Truck, Users, Megaphone, Wrench, FileText, Flame, Coins, Gift } from 'lucide-react';
 
 // Import New Modular Components
 import CatalogHeader from './catalog/CatalogHeader';
@@ -12,6 +12,7 @@ import BulkCalcOverlay from './catalog/BulkCalcOverlay';
 
 interface CatalogPanelProps {
     inventory: InventoryItem[];
+    menuItems: MenuItem[]; // Add Menu Items Prop
     centralIngredients: IngredientLibraryItem[];
     selectedSupplierId: string;
     suppliers?: Supplier[]; 
@@ -20,7 +21,7 @@ interface CatalogPanelProps {
 }
 
 // --- HARDCODED SERVICES LIST ---
-const SERVICE_ITEMS = [
+const EXPENSE_SERVICES = [
     { id: 'svc_rent', name: 'ค่าเช่าที่ (Rent)', category: 'rent', icon: Home },
     { id: 'svc_util', name: 'ค่าน้ำ/ไฟ (Utilities)', category: 'utilities', icon: Zap },
     { id: 'svc_fuel', name: 'ค่าแก๊ส (Fuel)', category: 'utilities', icon: Flame },
@@ -31,12 +32,17 @@ const SERVICE_ITEMS = [
     { id: 'svc_tax', name: 'ภาษี/ค่าธรรมเนียม', category: 'general', icon: FileText },
 ];
 
+const INCOME_SERVICES = [
+    { id: 'inc_other', name: 'รายได้อื่นๆ (Other Income)', category: 'other_income', icon: Coins },
+    { id: 'inc_tip', name: 'ทิป (Tips)', category: 'other_income', icon: Gift },
+];
+
 const CatalogPanel: React.FC<CatalogPanelProps> = ({ 
-    inventory, centralIngredients, selectedSupplierId, suppliers = [], onAddItem, type 
+    inventory, menuItems, centralIngredients, selectedSupplierId, suppliers = [], onAddItem, type 
 }) => {
     
     // --- MAIN STATE ---
-    const [activeTab, setActiveTab] = useState<'stock' | 'assets' | 'services' | 'new'>('stock');
+    const [activeTab, setActiveTab] = useState<'stock' | 'assets' | 'services' | 'new' | 'menu'>('stock');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [searchTerm, setSearchTerm] = useState('');
     
@@ -47,10 +53,17 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({
     const [bulkMode, setBulkMode] = useState(true);
     const [bulkConfigItem, setBulkConfigItem] = useState<InventoryItem | IngredientLibraryItem | null>(null);
 
-    // --- FILTER LOGIC (Keep here to pass clean data to Grid) ---
+    // Initial Tab Selection based on Type
+    useEffect(() => {
+        if (type === 'income') setActiveTab('menu');
+        else setActiveTab('stock');
+    }, [type]);
+
+    // --- FILTER LOGIC ---
     const filteredItems = useMemo(() => {
         const lowerSearch = searchTerm.toLowerCase();
         
+        // 1. STOCK TAB (Expense Only)
         if (activeTab === 'stock') {
             let candidates = [...centralIngredients]; 
             
@@ -81,48 +94,71 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({
             return candidates;
         } 
         
+        // 2. MENU TAB (Income Only)
+        if (activeTab === 'menu') {
+            return menuItems.filter(m => m.name.toLowerCase().includes(lowerSearch));
+        }
+
+        // 3. ASSETS TAB (Expense Only)
         if (activeTab === 'assets') {
             return inventory.filter(i => i.type === 'asset' && i.name.toLowerCase().includes(lowerSearch));
         }
 
-        // NEW: Services Filter
+        // 4. SERVICES TAB (Both)
         if (activeTab === 'services') {
-            return SERVICE_ITEMS.filter(i => i.name.toLowerCase().includes(lowerSearch));
+            const list = type === 'income' ? INCOME_SERVICES : EXPENSE_SERVICES;
+            return list.filter(i => i.name.toLowerCase().includes(lowerSearch));
         }
 
         return [];
-    }, [activeTab, stockFilter, searchTerm, selectedSupplierId, centralIngredients, inventory, type, suppliers]);
+    }, [activeTab, stockFilter, searchTerm, selectedSupplierId, centralIngredients, inventory, menuItems, type, suppliers]);
 
 
     // --- HANDLERS ---
     const handleItemClick = (sourceItem: any) => {
-        // Case 1: Bulk Mode Active -> Open Overlay (Only for Stock)
-        if (type === 'expense' && bulkMode && activeTab === 'stock') {
-            setBulkConfigItem(sourceItem);
+        
+        // Case A: Menu Item (Income)
+        if (activeTab === 'menu') {
+            const item: StockDeductionItem = {
+                id: `menu-${Date.now()}-${Math.random()}`,
+                name: sourceItem.name,
+                qty: 1,
+                type: 'menu',
+                refId: sourceItem.id,
+                unit: 'ชิ้น',
+                costPerUnit: sourceItem.sellingPrice, // Use selling price for income amount
+                category: 'sales'
+            };
+            onAddItem(item);
             return;
         }
 
-        // Case 2: Service Item (Expense)
+        // Case B: Service Item (Expense/Income)
         if (activeTab === 'services') {
             const item: StockDeductionItem = {
                 id: `svc-${Date.now()}-${Math.random()}`,
                 name: sourceItem.name,
                 qty: 1,
-                type: 'expense', // Marked as Expense
+                type: 'expense',
                 refId: sourceItem.id,
                 unit: 'รายการ',
-                costPerUnit: 0, // User enters price later
+                costPerUnit: 0,
                 category: sourceItem.category
             };
             onAddItem(item);
             return;
         }
 
-        // Case 3: Normal Direct Add (Stock/Asset)
+        // Case C: Bulk Mode Active (Stock Expense)
+        if (type === 'expense' && bulkMode && activeTab === 'stock') {
+            setBulkConfigItem(sourceItem);
+            return;
+        }
+
+        // Case D: Direct Add (Stock/Asset Expense)
         const isAsset = activeTab === 'assets';
         let cost = sourceItem.costPerUnit || sourceItem.bulkPrice || 0;
 
-        // Try to find supplier specific price
         if (type === 'expense' && selectedSupplierId) {
             const currentSupplier = suppliers.find(s => s.id === selectedSupplierId);
             const supplierProduct = currentSupplier?.products?.find(p => p.id === sourceItem.id);

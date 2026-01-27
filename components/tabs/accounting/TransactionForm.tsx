@@ -72,7 +72,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             setSlipImage(initialData.slipImage || null);
             setIsSplitMode(false); // Default to simple editing
         } else {
-            // Reset
+            // Reset for New Entry
             setBillItems([]);
             setTitle('');
             setSupplierId('');
@@ -80,8 +80,12 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             setDate(new Date().toISOString().split('T')[0]);
             setMobileTab('catalog'); // Reset tab to catalog on open
             setIsSplitMode(false);
+            
+            // FIX: Force reset type and category based on props when opening new form
+            setType(defaultType);
+            setCategory(defaultCategory || (defaultType === 'income' ? 'sales' : 'raw_material'));
         }
-    }, [initialData, isOpen]);
+    }, [initialData, isOpen, defaultType, defaultCategory]);
 
     // --- LOGIC HANDLERS ---
 
@@ -102,7 +106,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
         // Auto-set title if empty
         if (!title && billItems.length === 0) {
-            setTitle(item.type === 'expense' ? `จ่าย: ${item.name}` : `ซื้อ: ${item.name}`);
+            setTitle(item.type === 'expense' ? `จ่าย: ${item.name}` : `รับ: ${item.name}`);
         }
     };
 
@@ -202,6 +206,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             // Collect items that need stock processing
             // Items with type='expense' (Services) are SKIPPED for stock deduction/addition
             items.forEach(i => {
+                // Logic: If income, we allow 'menu' type to perform recipe deduction
                 if (i.type === 'inventory' || i.type === 'menu') {
                     stockItems.push(i);
                 }
@@ -232,7 +237,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                             {type === 'income' ? <ArrowUpRight className="stroke-[3px]" size={24}/> : <ArrowDownLeft className="stroke-[3px]" size={24}/>}
                             {initialData ? 'แก้ไขรายการ' : (type === 'income' ? 'รับเงินเข้า' : 'บันทึกรายจ่าย')}
                         </h3>
-                        <p className="text-stone-400 text-xs md:text-sm font-bold ml-8 md:ml-10">เลือกสินค้า/บริการลงตะกร้า ระบบจะแยกหมวดหมู่ให้อัตโนมัติ</p>
+                        <p className="text-stone-400 text-xs md:text-sm font-bold ml-8 md:ml-10">
+                            {type === 'income' ? 'เลือกเมนูที่ขาย (ตัดสต็อกอัตโนมัติ)' : 'เลือกสินค้า/บริการลงตะกร้า'}
+                        </p>
                     </div>
                     <button onClick={onClose} className="bg-white rounded-full p-2 hover:bg-stone-100 text-stone-400 transition-colors shadow-sm"><X size={20}/></button>
                 </div>
@@ -283,6 +290,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                     <div className={`flex-1 flex flex-col h-full overflow-hidden min-h-0 ${mobileTab === 'catalog' ? 'flex w-full' : 'hidden md:flex'}`}>
                         <CatalogPanel 
                             inventory={inventory}
+                            menuItems={menuItems} // PASS MENU ITEMS HERE
                             centralIngredients={centralIngredients}
                             selectedSupplierId={supplierId}
                             suppliers={suppliers} 

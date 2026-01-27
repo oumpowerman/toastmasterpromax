@@ -1,10 +1,10 @@
 
-import React from 'react';
-import { Search, Package, Armchair, Plus, Calculator, Wheat, Box, Banknote } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { Search, Package, Armchair, Plus, Calculator, Wheat, Box, Banknote, Coffee, Sparkles } from 'lucide-react';
 
 interface CatalogHeaderProps {
-    activeTab: 'stock' | 'assets' | 'services' | 'new';
-    setActiveTab: (tab: 'stock' | 'assets' | 'services' | 'new') => void;
+    activeTab: 'stock' | 'assets' | 'services' | 'new' | 'menu';
+    setActiveTab: (tab: 'stock' | 'assets' | 'services' | 'new' | 'menu') => void;
     searchTerm: string;
     setSearchTerm: (term: string) => void;
     stockFilter: 'all' | 'ingredient' | 'packaging';
@@ -22,23 +22,53 @@ const CatalogHeader: React.FC<CatalogHeaderProps> = ({
     bulkMode, setBulkMode,
     type, selectedSupplierId
 }) => {
+    
+    // Auto-switch tab based on type if current tab is invalid for that type
+    useEffect(() => {
+        if (type === 'income') {
+            if (activeTab === 'stock' || activeTab === 'assets') {
+                setActiveTab('menu');
+            }
+        } else {
+            if (activeTab === 'menu') {
+                setActiveTab('stock');
+            }
+        }
+    }, [type]);
+
     return (
         <div className="p-4 pb-0 space-y-3">
-            {/* Main Tabs (Updated to 4) */}
+            {/* Main Tabs */}
             <div className="flex p-1 bg-stone-200/50 rounded-2xl overflow-x-auto">
-                <button onClick={() => setActiveTab('stock')} className={`flex-1 min-w-[90px] py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'stock' ? 'bg-white shadow text-orange-600' : 'text-stone-500 hover:text-stone-700'}`}>
-                    <Package size={16}/> สินค้า/ของสด
-                </button>
-                <button onClick={() => setActiveTab('assets')} className={`flex-1 min-w-[80px] py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'assets' ? 'bg-white shadow text-purple-600' : 'text-stone-500 hover:text-stone-700'}`}>
-                    <Armchair size={16}/> สินทรัพย์
-                </button>
-                {/* NEW TAB: Services */}
-                <button onClick={() => setActiveTab('services')} className={`flex-1 min-w-[90px] py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'services' ? 'bg-white shadow text-rose-500' : 'text-stone-500 hover:text-stone-700'}`}>
-                    <Banknote size={16}/> ค่าใช้จ่าย
-                </button>
-                <button onClick={() => setActiveTab('new')} className={`flex-1 min-w-[80px] py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'new' ? 'bg-white shadow text-blue-600' : 'text-stone-500 hover:text-stone-700'}`}>
-                    <Plus size={16}/> ของใหม่
-                </button>
+                {type === 'expense' ? (
+                    <>
+                        <button onClick={() => setActiveTab('stock')} className={`flex-1 min-w-[90px] py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'stock' ? 'bg-white shadow text-orange-600' : 'text-stone-500 hover:text-stone-700'}`}>
+                            <Package size={16}/> สินค้า/ของสด
+                        </button>
+                        <button onClick={() => setActiveTab('assets')} className={`flex-1 min-w-[80px] py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'assets' ? 'bg-white shadow text-purple-600' : 'text-stone-500 hover:text-stone-700'}`}>
+                            <Armchair size={16}/> สินทรัพย์
+                        </button>
+                        <button onClick={() => setActiveTab('services')} className={`flex-1 min-w-[90px] py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'services' ? 'bg-white shadow text-rose-500' : 'text-stone-500 hover:text-stone-700'}`}>
+                            <Banknote size={16}/> ค่าใช้จ่าย
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <button onClick={() => setActiveTab('menu')} className={`flex-1 min-w-[90px] py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'menu' ? 'bg-white shadow text-emerald-600' : 'text-stone-500 hover:text-stone-700'}`}>
+                            <Coffee size={16}/> เมนูที่ขาย
+                        </button>
+                        <button onClick={() => setActiveTab('services')} className={`flex-1 min-w-[90px] py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'services' ? 'bg-white shadow text-teal-600' : 'text-stone-500 hover:text-stone-700'}`}>
+                            <Sparkles size={16}/> รายรับอื่นๆ
+                        </button>
+                    </>
+                )}
+                
+                {/* Add New Button (Only for Expense usually, or income services) */}
+                {(type === 'expense' || activeTab === 'services') && (
+                    <button onClick={() => setActiveTab('new')} className={`flex-1 min-w-[80px] py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'new' ? 'bg-white shadow text-blue-600' : 'text-stone-500 hover:text-stone-700'}`}>
+                        <Plus size={16}/> สร้างใหม่
+                    </button>
+                )}
             </div>
 
             {/* Search & Sub Filters */}
@@ -48,7 +78,7 @@ const CatalogHeader: React.FC<CatalogHeaderProps> = ({
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={18}/>
                         <input 
                             type="text" 
-                            placeholder={activeTab === 'services' ? "ค้นหาค่าใช้จ่าย..." : selectedSupplierId ? "ค้นหาสินค้าในร้านนี้..." : "ค้นหาในคลัง..."}
+                            placeholder={activeTab === 'menu' ? "ค้นหาเมนู..." : activeTab === 'services' ? "ค้นหารายการ..." : selectedSupplierId ? "ค้นหาสินค้าในร้านนี้..." : "ค้นหา..."}
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 bg-white border border-stone-200 rounded-xl font-bold text-stone-600 outline-none focus:border-orange-300 text-sm shadow-sm"

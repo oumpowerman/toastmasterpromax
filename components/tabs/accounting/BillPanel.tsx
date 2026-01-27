@@ -130,7 +130,9 @@ const BillPanel: React.FC<BillPanelProps> = ({
                             <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full px-3 py-2 rounded-xl border font-bold text-stone-600 text-sm outline-none focus:border-orange-400" />
                         </div>
                         <div>
-                            <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 block">จ่ายโดย</label>
+                            <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 block">
+                                {type === 'income' ? 'รับเงินโดย' : 'จ่ายโดย'}
+                            </label>
                             <select value={paymentChannel} onChange={e => setPaymentChannel(e.target.value)} className="w-full px-3 py-2 rounded-xl border font-bold text-stone-600 text-sm outline-none focus:border-orange-400">
                                 {PAYMENT_CHANNELS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                             </select>
@@ -169,6 +171,7 @@ const BillPanel: React.FC<BillPanelProps> = ({
                         )}
                     </div>
 
+                    {/* ONLY SHOW SUPPLIER IF TYPE IS EXPENSE */}
                     {type === 'expense' && !isSplitMode && (category === 'raw_material' || category === 'packaging' || category === 'equipment') && (
                         <div>
                             <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 block">ร้านค้า (Supplier)</label>
@@ -194,7 +197,7 @@ const BillPanel: React.FC<BillPanelProps> = ({
 
                     <div>
                         <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 block">หัวข้อบิล (Title)</label>
-                        <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="เช่น ซื้อของเข้าร้าน..." className="w-full px-3 py-2 rounded-xl border font-bold text-stone-600 text-sm outline-none focus:border-orange-400 placeholder-stone-300" />
+                        <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder={type === 'income' ? "เช่น ขายของงาน..." : "เช่น ซื้อของเข้าร้าน..."} className="w-full px-3 py-2 rounded-xl border font-bold text-stone-600 text-sm outline-none focus:border-orange-400 placeholder-stone-300" />
                     </div>
                 </div>
 
@@ -207,9 +210,9 @@ const BillPanel: React.FC<BillPanelProps> = ({
 
                     {billItems.length === 0 ? (
                         <div className="text-center py-8 text-stone-300 border-2 border-dashed border-stone-100 rounded-2xl">
-                            <p>ยังไม่มีสินค้า</p>
+                            <p>ยังไม่มีรายการ</p>
                             <p className="text-xs hidden md:block">เลือกจากฝั่งขวา 👉</p>
-                            <p className="text-xs md:hidden">กดแท็บ 'เลือกสินค้า' ด้านบน</p>
+                            <p className="text-xs md:hidden">กดแท็บ 'เลือกรายการ' ด้านบน</p>
                         </div>
                     ) : (
                         billItems.map(item => (
@@ -233,6 +236,7 @@ const BillPanel: React.FC<BillPanelProps> = ({
                                             </div>
                                         ) : (
                                             <div className="flex gap-1 mt-0.5">
+                                                {item.type === 'menu' && <span className="text-[8px] bg-emerald-100 text-emerald-600 px-1.5 rounded-md font-bold">Menu</span>}
                                                 {item.isNew && <span className="text-[8px] bg-green-100 text-green-600 px-1.5 rounded-md font-bold">New</span>}
                                                 {item.category === 'asset' && <span className="text-[8px] bg-purple-100 text-purple-600 px-1.5 rounded-md font-bold">Asset</span>}
                                             </div>
@@ -255,7 +259,7 @@ const BillPanel: React.FC<BillPanelProps> = ({
                                             className="w-16 bg-transparent text-right font-bold text-sm text-stone-700 outline-none border-b border-dashed border-stone-300 focus:border-orange-400"
                                         />
                                     </div>
-                                    <span className="text-sm font-black text-stone-800 w-16 text-right">฿{(item.qty * (item.costPerUnit || 0)).toFixed(0)}</span>
+                                    <span className={`text-sm font-black w-16 text-right ${type === 'income' ? 'text-emerald-600' : 'text-stone-800'}`}>฿{(item.qty * (item.costPerUnit || 0)).toFixed(0)}</span>
                                 </div>
                             </div>
                         ))
@@ -267,14 +271,14 @@ const BillPanel: React.FC<BillPanelProps> = ({
             <div className="p-4 md:p-6 border-t border-stone-100 bg-stone-50 mt-auto shrink-0">
                 <div className="flex justify-between items-end mb-4">
                     <span className="text-stone-500 font-bold uppercase text-xs">ยอดรวมสุทธิ</span>
-                    <span className="text-3xl md:text-4xl font-black text-stone-800 tracking-tighter">฿{totalAmount.toLocaleString()}</span>
+                    <span className={`text-3xl md:text-4xl font-black tracking-tighter ${type === 'income' ? 'text-emerald-600' : 'text-stone-800'}`}>฿{totalAmount.toLocaleString()}</span>
                 </div>
                 <button 
                     onClick={onSubmit}
                     disabled={totalAmount <= 0}
-                    className="w-full py-4 bg-stone-800 text-white rounded-2xl font-black text-xl shadow-lg hover:bg-stone-900 hover:-translate-y-1 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`w-full py-4 text-white rounded-2xl font-black text-xl shadow-lg hover:-translate-y-1 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${type === 'income' ? 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200' : 'bg-stone-800 hover:bg-stone-900 shadow-stone-300'}`}
                 >
-                    <CheckCircle2 size={24}/> บันทึกรายการ
+                    <CheckCircle2 size={24}/> {type === 'income' ? 'บันทึกรายรับ' : 'บันทึกรายจ่าย'}
                 </button>
             </div>
         </div>
