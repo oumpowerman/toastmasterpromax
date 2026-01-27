@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { InventoryItem, IngredientLibraryItem, Supplier } from '../../../types';
 import { StockDeductionItem } from './TransactionForm';
+import { Home, Zap, Truck, Users, Megaphone, Wrench, FileText, Flame } from 'lucide-react';
 
 // Import New Modular Components
 import CatalogHeader from './catalog/CatalogHeader';
@@ -18,12 +19,24 @@ interface CatalogPanelProps {
     type: 'income' | 'expense';
 }
 
+// --- HARDCODED SERVICES LIST ---
+const SERVICE_ITEMS = [
+    { id: 'svc_rent', name: 'ค่าเช่าที่ (Rent)', category: 'rent', icon: Home },
+    { id: 'svc_util', name: 'ค่าน้ำ/ไฟ (Utilities)', category: 'utilities', icon: Zap },
+    { id: 'svc_fuel', name: 'ค่าแก๊ส (Fuel)', category: 'utilities', icon: Flame },
+    { id: 'svc_labor', name: 'ค่าแรง/จ้างเหมา (Labor)', category: 'labor', icon: Users },
+    { id: 'svc_transport', name: 'ค่าเดินทาง/ขนส่ง (Transport)', category: 'general', icon: Truck },
+    { id: 'svc_mkt', name: 'การตลาด/ยิงแอด (Ads)', category: 'marketing', icon: Megaphone },
+    { id: 'svc_maint', name: 'ซ่อมแซม/บำรุงรักษา', category: 'general', icon: Wrench },
+    { id: 'svc_tax', name: 'ภาษี/ค่าธรรมเนียม', category: 'general', icon: FileText },
+];
+
 const CatalogPanel: React.FC<CatalogPanelProps> = ({ 
     inventory, centralIngredients, selectedSupplierId, suppliers = [], onAddItem, type 
 }) => {
     
     // --- MAIN STATE ---
-    const [activeTab, setActiveTab] = useState<'stock' | 'assets' | 'new'>('stock');
+    const [activeTab, setActiveTab] = useState<'stock' | 'assets' | 'services' | 'new'>('stock');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [searchTerm, setSearchTerm] = useState('');
     
@@ -72,19 +85,40 @@ const CatalogPanel: React.FC<CatalogPanelProps> = ({
             return inventory.filter(i => i.type === 'asset' && i.name.toLowerCase().includes(lowerSearch));
         }
 
+        // NEW: Services Filter
+        if (activeTab === 'services') {
+            return SERVICE_ITEMS.filter(i => i.name.toLowerCase().includes(lowerSearch));
+        }
+
         return [];
     }, [activeTab, stockFilter, searchTerm, selectedSupplierId, centralIngredients, inventory, type, suppliers]);
 
 
     // --- HANDLERS ---
     const handleItemClick = (sourceItem: any) => {
-        // Case 1: Bulk Mode Active -> Open Overlay
+        // Case 1: Bulk Mode Active -> Open Overlay (Only for Stock)
         if (type === 'expense' && bulkMode && activeTab === 'stock') {
             setBulkConfigItem(sourceItem);
             return;
         }
 
-        // Case 2: Normal Direct Add
+        // Case 2: Service Item (Expense)
+        if (activeTab === 'services') {
+            const item: StockDeductionItem = {
+                id: `svc-${Date.now()}-${Math.random()}`,
+                name: sourceItem.name,
+                qty: 1,
+                type: 'expense', // Marked as Expense
+                refId: sourceItem.id,
+                unit: 'รายการ',
+                costPerUnit: 0, // User enters price later
+                category: sourceItem.category
+            };
+            onAddItem(item);
+            return;
+        }
+
+        // Case 3: Normal Direct Add (Stock/Asset)
         const isAsset = activeTab === 'assets';
         let cost = sourceItem.costPerUnit || sourceItem.bulkPrice || 0;
 

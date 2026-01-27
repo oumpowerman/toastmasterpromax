@@ -10,7 +10,7 @@ export interface StockDeductionItem {
     id: string;
     name: string;
     qty: number;
-    type: 'menu' | 'inventory';
+    type: 'menu' | 'inventory' | 'expense'; // Added 'expense' type
     refId: string;
     unit?: string;
     costPerUnit?: number;
@@ -54,6 +54,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     const [paymentChannel, setPaymentChannel] = useState('cash');
     const [category, setCategory] = useState(defaultCategory || (defaultType === 'income' ? 'sales' : 'raw_material'));
     const [slipImage, setSlipImage] = useState<string | null>(null);
+    
+    // Split Mode State
+    const [isSplitMode, setIsSplitMode] = useState(false);
 
     // 2. Bill Items (The Cart)
     const [billItems, setBillItems] = useState<StockDeductionItem[]>([]);
@@ -67,8 +70,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             setCategory(initialData.category);
             setPaymentChannel(initialData.channel || 'cash');
             setSlipImage(initialData.slipImage || null);
-            // In a real app, we would parse `initialData.stockItems` if saved, 
-            // but currently LedgerItem doesn't store full item breakdown persistently in a way we can edit easily yet.
+            setIsSplitMode(false); // Default to simple editing
         } else {
             // Reset
             setBillItems([]);
@@ -77,6 +79,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             setSlipImage(null);
             setDate(new Date().toISOString().split('T')[0]);
             setMobileTab('catalog'); // Reset tab to catalog on open
+            setIsSplitMode(false);
         }
     }, [initialData, isOpen]);
 
@@ -85,18 +88,21 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     const handleAddItem = (item: StockDeductionItem) => {
         setBillItems(prev => {
             // If item exists (same refId and unit cost), just increment qty
+            // Exception: Expense items usually don't merge quantity in the same way if price differs, but for simplicity we merge if same cost
             const exists = prev.findIndex(p => p.refId === item.refId && p.costPerUnit === item.costPerUnit);
             if (exists >= 0) {
                 const newItems = [...prev];
                 newItems[exists].qty += item.qty;
                 return newItems;
             }
+            // Ensure category is set for split mode
+            if (!item.category) item.category = 'general';
             return [...prev, item];
         });
 
         // Auto-set title if empty
         if (!title && billItems.length === 0) {
-            setTitle(`ซื้อ: ${item.name} ...`);
+            setTitle(item.type === 'expense' ? `จ่าย: ${item.name}` : `ซื้อ: ${item.name}`);
         }
     };
 
@@ -113,7 +119,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         const sup = suppliers.find(s => s.id === id);
         if (sup) {
             setTitle(`ซื้อของจาก: ${sup.name}`);
-            // Logic to potentially clear or suggest items could go here
         }
     };
 
@@ -122,12 +127,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             onAddSupplier(data);
         }
         setShowSupplierModal(false);
-        // Note: Auto-selecting the new supplier requires the ID which is generated async.
-        // For now, the user will see the new supplier in the list immediately after save (via React state update).
     };
 
     const handleAIResult = (scannedItems: any[]) => {
-        // Map AI result to StockDeductionItem
         const newItems: StockDeductionItem[] = scannedItems.map(sc => ({
             id: `scan-${Date.now()}-${Math.random()}`,
             name: sc.name,
@@ -135,9 +137,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             unit: sc.unit || 'ชิ้น',
             costPerUnit: (sc.totalPrice || 0) / (sc.quantity || 1),
             type: 'inventory',
-            refId: 'new-item', // Mark as new so it creates inventory if needed
+            refId: 'new-item',
             isNew: true,
-            category: 'ingredient' 
+            category: 'general' // Default category
         }));
         
         setBillItems(prev => [...prev, ...newItems]);
@@ -147,21 +149,71 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     };
 
     const handleSubmit = async () => {
-        // Calculate total on the fly
-        const totalAmount = billItems.reduce((sum, item) => sum + ((item.costPerUnit || 0) * item.qty), 0);
-
-        const payload = {
-            date,
-            type,
-            title: title || (type === 'income' ? 'รายรับ' : 'รายจ่ายทั่วไป'),
-            amount: totalAmount,
-            category: category, 
-            channel: paymentChannel,
-            slipImage,
-            assetData: undefined // Handled inside Accounting.tsx logic via stockItems
-        };
+        // --- INTELLIGENT GROUPING (Auto-Split) ---
+        // 1. Group items by category
+        const groups: Record<string, StockDeductionItem[]> = {};
         
-        await onSubmit(payload, billItems);
+        billItems.forEach(item => {
+            // If explicit split mode is OFF, and user selected a main category, we might force it?
+            // BUT, the new design Philosophy is "Item dictates Category".
+            // So we default to item.category. If missing, fall back to form category.
+            const cat = item.category || category || 'general';
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(item);
+        });
+
+        // 2. Create Payloads
+        const payloads: any[] = [];
+        const stockItems: StockDeductionItem[] = [];
+
+        Object.entries(groups).forEach(([cat, items]) => {
+            const groupTotal = items.reduce((sum, item) => sum + ((item.costPerUnit || 0) * item.qty), 0);
+            
+            // Build a title for this group
+            let groupTitle = title;
+            // If multiple groups exist, append category to title to distinguish
+            if (Object.keys(groups).length > 1) {
+                // If the user typed a generic title like "Shopping", append " (Raw Material)"
+                // If title is empty, generate from items e.g. "Pork, Egg"
+                const itemNames = items.map(i => i.name).join(', ');
+                groupTitle = `${title || (type === 'income' ? 'รายรับ' : 'รายจ่าย')} (${cat})`; 
+                if (!title) groupTitle = itemNames.length > 30 ? itemNames.substring(0, 30) + '...' : itemNames;
+            } else {
+                // Single group, use user title or default
+                if (!groupTitle) {
+                     const itemNames = items.map(i => i.name).join(', ');
+                     groupTitle = itemNames.length > 30 ? itemNames.substring(0, 30) + '...' : itemNames;
+                }
+            }
+
+            payloads.push({
+                date,
+                type,
+                title: groupTitle,
+                amount: groupTotal,
+                category: cat,
+                channel: paymentChannel,
+                slipImage,
+                // Pass assetData only if this group contains asset/new items that need special handling?
+                // Actually stock creation is handled by 'stockDeductions' array passed to parent.
+                assetData: undefined 
+            });
+
+            // Collect items that need stock processing
+            // Items with type='expense' (Services) are SKIPPED for stock deduction/addition
+            items.forEach(i => {
+                if (i.type === 'inventory' || i.type === 'menu') {
+                    stockItems.push(i);
+                }
+                // If it's a new asset (type='inventory' but category='asset'), it's already in stockItems
+                // If it's 'expense' (Rent, Water), we don't push to stockItems
+            });
+        });
+
+        // 3. Submit
+        // We pass the array of payloads (for split ledger) and the filtered stock items
+        await onSubmit(payloads, stockItems); 
+        
         onClose();
     };
 
@@ -171,7 +223,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4">
             <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
             
-            {/* UPDATED: h-[90vh] on desktop for reliable flexbox scrolling */}
             <div className="bg-white w-full h-[100dvh] md:h-[90vh] md:w-full md:max-w-7xl md:rounded-[2.5rem] p-0 relative z-10 animate-in zoom-in-95 md:max-h-[90vh] overflow-hidden flex flex-col md:border-4 md:border-white shadow-2xl">
                 
                 {/* HEADER */}
@@ -181,7 +232,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                             {type === 'income' ? <ArrowUpRight className="stroke-[3px]" size={24}/> : <ArrowDownLeft className="stroke-[3px]" size={24}/>}
                             {initialData ? 'แก้ไขรายการ' : (type === 'income' ? 'รับเงินเข้า' : 'บันทึกรายจ่าย')}
                         </h3>
-                        <p className="text-stone-400 text-xs md:text-sm font-bold ml-8 md:ml-10">เลือกสินค้าลงตะกร้า ระบบจะบันทึกบัญชีและสต็อกพร้อมกัน</p>
+                        <p className="text-stone-400 text-xs md:text-sm font-bold ml-8 md:ml-10">เลือกสินค้า/บริการลงตะกร้า ระบบจะแยกหมวดหมู่ให้อัตโนมัติ</p>
                     </div>
                     <button onClick={onClose} className="bg-white rounded-full p-2 hover:bg-stone-100 text-stone-400 transition-colors shadow-sm"><X size={20}/></button>
                 </div>
@@ -192,7 +243,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                         onClick={() => setMobileTab('catalog')} 
                         className={`flex-1 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${mobileTab === 'catalog' ? 'bg-stone-800 text-white shadow-md' : 'bg-stone-50 text-stone-400'}`}
                     >
-                        <Package size={16}/> เลือกสินค้า
+                        <Package size={16}/> เลือกรายการ
                     </button>
                     <button 
                         onClick={() => setMobileTab('bill')} 
@@ -202,7 +253,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                     </button>
                 </div>
 
-                {/* SPLIT SCREEN CONTENT (Added min-h-0) */}
+                {/* SPLIT SCREEN CONTENT */}
                 <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-stone-50 relative min-h-0">
                     
                     {/* LEFT: BILL PANEL (Form & Cart) */}
@@ -219,10 +270,12 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                             onRemoveItem={handleRemoveItem}
                             suppliers={suppliers}
                             onAddSupplier={onAddSupplier}
-                            onOpenAddSupplier={() => setShowSupplierModal(true)} // Open Modal
+                            onOpenAddSupplier={() => setShowSupplierModal(true)} 
                             onAIResult={handleAIResult}
                             onSubmit={handleSubmit}
                             type={type}
+                            isSplitMode={isSplitMode} // Keep for manual override if needed
+                            setIsSplitMode={setIsSplitMode} 
                         />
                     </div>
 
@@ -232,11 +285,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                             inventory={inventory}
                             centralIngredients={centralIngredients}
                             selectedSupplierId={supplierId}
-                            suppliers={suppliers} // Added suppliers prop here
+                            suppliers={suppliers} 
                             onAddItem={(item) => {
                                 handleAddItem(item);
-                                // Optional: Alert user on mobile
-                                // if (window.innerWidth < 768) { showAlert(`เพิ่ม ${item.name} แล้ว`, 'success'); }
                             }}
                             type={type}
                         />
@@ -249,11 +300,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             {showSupplierModal && (
                 <div style={{ zIndex: 100, position: 'relative' }}>
                     <SupplierEditModal 
-                        supplier={null} // Create Mode
+                        supplier={null} 
                         centralIngredients={centralIngredients}
                         onClose={() => setShowSupplierModal(false)}
                         onSave={handleNewSupplierSaved}
-                        onDelete={() => {}} // No delete in create mode
+                        onDelete={() => {}} 
                     />
                 </div>
             )}

@@ -25,9 +25,8 @@ interface AccountingProps {
   menuItems: MenuItem[];
   inventory: InventoryItem[];
   updateInventory: (items: InventoryItem[]) => void;
-  // NEW: Need addSingleItem to create new inventory items from expenses
   addSingleItem?: (item: InventoryItem) => void; 
-  addSupplier?: (data: any) => void; // New Prop
+  addSupplier?: (data: any) => void; 
 }
 
 const Accounting: React.FC<AccountingProps> = ({ 
@@ -105,15 +104,25 @@ const Accounting: React.FC<AccountingProps> = ({
       }
   };
 
-  // --- REFACTORED SUBMIT HANDLER ---
-  const handleTransactionSubmit = async (itemData: any, stockDeductions: StockDeductionItem[]) => {
+  // --- REFACTORED SUBMIT HANDLER (Supports Array for Split Bill) ---
+  const handleTransactionSubmit = async (itemData: any | any[], stockDeductions: StockDeductionItem[]) => {
       
-      // 1. Save Ledger Entry
+      // 1. Save Ledger Entry (Handle Array for Split Bill)
+      const itemsToSave = Array.isArray(itemData) ? itemData : [itemData];
+      
       if (editingItem) {
+          // If editing, we assume single item update for now (split edit is complex)
+          if (Array.isArray(itemData)) {
+              await showAlert("ไม่สามารถแก้ไขเป็นหลายรายการได้", "error");
+              return;
+          }
           updateLedgerItem(editingItem.id, itemData);
           await showAlert("แก้ไขรายการเรียบร้อย", 'success');
       } else {
-          addLedgerItem(itemData);
+          // Add New
+          itemsToSave.forEach(item => {
+              addLedgerItem(item);
+          });
 
           // 2. Handle Stock Deductions / Additions
           if (stockDeductions.length > 0) {
@@ -123,7 +132,7 @@ const Accounting: React.FC<AccountingProps> = ({
                 for (const deduction of stockDeductions) {
                     // Logic: If refId is 'new-item', we CREATE it first
                     if (deduction.refId === 'new-item' && addSingleItem) {
-                        const isAsset = deduction.category === 'asset' || (deduction.type === 'inventory' && itemData.category === 'equipment');
+                        const isAsset = deduction.category === 'asset' || (deduction.type === 'inventory' && (itemsToSave[0]?.category === 'equipment' || deduction.category === 'equipment')); // Infer from deduction category if available
                         
                         const newItem: InventoryItem = {
                             id: `auto-gen-${Date.now()}-${Math.random()}`,
@@ -140,7 +149,7 @@ const Accounting: React.FC<AccountingProps> = ({
                             // Asset props from deduction item
                             lifespanDays: isAsset ? (deduction.lifespanDays || 365) : undefined,
                             salvagePrice: isAsset ? (deduction.salvagePrice || 0) : undefined,
-                            purchaseDate: itemData.date
+                            purchaseDate: itemsToSave[0].date
                         };
                         addSingleItem(newItem);
                         processedCount++;
@@ -151,7 +160,20 @@ const Accounting: React.FC<AccountingProps> = ({
                         const invIndex = newInventory.findIndex(i => i.id === deduction.refId);
                         
                         if (invIndex >= 0) {
-                            if (itemData.type === 'expense' && (itemData.category === 'raw_material' || itemData.category === 'packaging')) {
+                            // Check if ANY of the split items is a 'buy' category?
+                            // Actually, stock logic is independent of ledger category in split mode.
+                            // If we are in TransactionForm, it implies 'expense' usually adds stock if it's 'raw_material'.
+                            // BUT in Split Mode, we might mix 'rent' and 'raw_material'.
+                            // The deduction item itself should ideally carry intent.
+                            // Current logic assumes: type='expense' & cat in [raw, pack] = Add.
+                            // Let's assume if we have stockDeductions passed, we WANT to process them.
+                            // We need to know if it's ADD or REMOVE.
+                            // 'TransactionForm' handles expense (ADD) mostly. Income is usually deduct (sales).
+                            
+                            // Simplified logic: If formType was 'expense', we ADD to stock.
+                            // (Unless we add a specific 'action' field to StockDeductionItem later)
+                            
+                            if (formType === 'expense') {
                                 // --- STOCK IN (ADD) ---
                                 const currentItem = newInventory[invIndex];
                                 const oldQty = currentItem.quantity || 0;
@@ -205,14 +227,18 @@ const Accounting: React.FC<AccountingProps> = ({
 
                 if (processedCount > 0) {
                     updateInventory(newInventory);
-                    await showAlert(`บันทึกและปรับสต็อก ${processedCount} รายการเรียบร้อย!`, 'success');
+                    await showAlert(`บันทึก${itemsToSave.length > 1 ? 'แยกหมวดหมู่' : ''}และปรับสต็อก ${processedCount} รายการเรียบร้อย!`, 'success');
                 } else if (stockDeductions.some(d => d.refId === 'new-item')) {
                      await showAlert("บันทึกบัญชีและเพิ่มสินค้าใหม่เรียบร้อย!", 'success');
                 } else {
-                    await showAlert("บันทึกบัญชีเรียบร้อย (แต่ไม่พบสินค้าเดิมในระบบให้ตัด)", 'warning');
+                    if (itemsToSave.length > 1) {
+                        await showAlert(`บันทึกแยก ${itemsToSave.length} รายการเรียบร้อย`, 'success');
+                    } else {
+                        await showAlert("บันทึกบัญชีเรียบร้อย (แต่ไม่พบสินค้าเดิมในระบบให้ตัด)", 'warning');
+                    }
                 }
           } else {
-              await showAlert("บันทึกรายการเรียบร้อย", 'success');
+              await showAlert(itemsToSave.length > 1 ? `บันทึกแยก ${itemsToSave.length} รายการเรียบร้อย` : "บันทึกรายการเรียบร้อย", 'success');
           }
       }
       setShowForm(false);
@@ -315,7 +341,7 @@ const Accounting: React.FC<AccountingProps> = ({
             menuItems={menuItems}
             inventory={inventory}
             suppliers={state?.suppliers || []} 
-            onAddSupplier={addSupplier} // Pass the function
+            onAddSupplier={addSupplier} 
             centralIngredients={state?.centralIngredients || []} 
         />
 

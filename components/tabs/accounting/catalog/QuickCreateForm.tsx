@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Package, Armchair, Wheat, Box, Calculator, X, Scale, AlertCircle, Clock, Recycle, Plus } from 'lucide-react';
+import { Package, Armchair, Wheat, Box, Calculator, X, Scale, AlertCircle, Clock, Recycle, Plus, Banknote } from 'lucide-react';
 import { StockDeductionItem } from '../TransactionForm';
 
 interface QuickCreateFormProps {
@@ -11,7 +11,7 @@ const COMMON_UNITS = ['กรัม', 'มล.', 'กก.', 'ลิตร', 'ช
 
 const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ onConfirm }) => {
     // --- STATE ---
-    const [newItemType, setNewItemType] = useState<'consumable' | 'asset'>('consumable');
+    const [newItemType, setNewItemType] = useState<'consumable' | 'asset' | 'service'>('consumable');
     const [newItemName, setNewItemName] = useState('');
     const [newItemPrice, setNewItemPrice] = useState('');
     
@@ -30,7 +30,7 @@ const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ onConfirm }) => {
 
     // --- COMPUTED VALUES ---
     const finalStockQty = useMemo(() => {
-        if (newItemType === 'asset') return Number(newItemQty);
+        if (newItemType === 'asset' || newItemType === 'service') return Number(newItemQty);
         
         const q = Number(buyQty) || 0;
         if (calcMode === 'direct') return q;
@@ -58,21 +58,22 @@ const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ onConfirm }) => {
         if (!newItemName || !newItemPrice) return;
         const price = Number(newItemPrice);
         const isAsset = newItemType === 'asset';
+        const isService = newItemType === 'service';
 
         const item: StockDeductionItem = {
             id: `new-${Date.now()}`,
             name: newItemName,
             qty: finalStockQty,
-            type: 'inventory',
+            type: isService ? 'expense' : 'inventory', // Map type correctly
             refId: 'new-item',
-            unit: isAsset ? 'เครื่อง/ชิ้น' : newItemUnit,
+            unit: isAsset ? 'เครื่อง/ชิ้น' : (isService ? 'รายการ' : newItemUnit),
             costPerUnit: price / finalStockQty,
             isNew: true,
-            category: isAsset ? 'asset' : newItemSubCategory,
+            category: isAsset ? 'asset' : (isService ? 'general' : newItemSubCategory),
             
             lifespanDays: isAsset ? Number(newItemLifespan) : undefined,
             salvagePrice: isAsset ? Number(newItemSalvage) : undefined,
-            minLevel: isAsset ? 0 : Number(newItemMinLevel)
+            minLevel: (isAsset || isService) ? 0 : Number(newItemMinLevel)
         };
         
         onConfirm(item);
@@ -88,12 +89,15 @@ const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ onConfirm }) => {
             
             {/* 1. Type Switcher */}
             <div className="flex bg-stone-100 p-1.5 rounded-2xl relative">
-                <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white rounded-xl shadow-sm transition-all duration-300 ease-out ${newItemType === 'consumable' ? 'left-1.5' : 'left-[calc(50%+3px)]'}`}></div>
-                <button onClick={() => setNewItemType('consumable')} className={`flex-1 relative z-10 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors ${newItemType === 'consumable' ? 'text-stone-800' : 'text-stone-400 hover:text-stone-600'}`}>
-                    <Package size={16}/> วัสดุสิ้นเปลือง
+                <div className={`absolute top-1.5 bottom-1.5 w-[calc(33%-4px)] bg-white rounded-xl shadow-sm transition-all duration-300 ease-out ${newItemType === 'consumable' ? 'left-1.5' : newItemType === 'asset' ? 'left-[calc(33%+3px)]' : 'left-[calc(66%+3px)]'}`}></div>
+                <button onClick={() => setNewItemType('consumable')} className={`flex-1 relative z-10 py-2.5 rounded-xl font-bold text-[10px] sm:text-xs flex items-center justify-center gap-1 sm:gap-2 transition-colors ${newItemType === 'consumable' ? 'text-stone-800' : 'text-stone-400 hover:text-stone-600'}`}>
+                    <Package size={14}/> ของใช้/สต็อก
                 </button>
-                <button onClick={() => setNewItemType('asset')} className={`flex-1 relative z-10 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors ${newItemType === 'asset' ? 'text-purple-600' : 'text-stone-400 hover:text-stone-600'}`}>
-                    <Armchair size={16}/> สินทรัพย์ถาวร
+                <button onClick={() => setNewItemType('asset')} className={`flex-1 relative z-10 py-2.5 rounded-xl font-bold text-[10px] sm:text-xs flex items-center justify-center gap-1 sm:gap-2 transition-colors ${newItemType === 'asset' ? 'text-purple-600' : 'text-stone-400 hover:text-stone-600'}`}>
+                    <Armchair size={14}/> ทรัพย์สิน
+                </button>
+                <button onClick={() => setNewItemType('service')} className={`flex-1 relative z-10 py-2.5 rounded-xl font-bold text-[10px] sm:text-xs flex items-center justify-center gap-1 sm:gap-2 transition-colors ${newItemType === 'service' ? 'text-rose-600' : 'text-stone-400 hover:text-stone-600'}`}>
+                    <Banknote size={14}/> ค่าบริการ
                 </button>
             </div>
 
@@ -101,7 +105,7 @@ const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ onConfirm }) => {
             <div className="space-y-4">
                 <div>
                     <label className="text-[10px] font-bold text-stone-400 uppercase ml-1 block mb-1">ชื่อรายการ (Item Name)</label>
-                    <input autoFocus type="text" value={newItemName} onChange={e => setNewItemName(e.target.value)} className="w-full px-4 py-3 border-2 border-stone-100 rounded-xl font-bold text-stone-700 outline-none focus:border-blue-300 text-sm" placeholder={newItemType === 'asset' ? "เช่น เตาปิ้ง, ตู้เย็น" : "เช่น ถุงร้อน, นมข้น"} />
+                    <input autoFocus type="text" value={newItemName} onChange={e => setNewItemName(e.target.value)} className="w-full px-4 py-3 border-2 border-stone-100 rounded-xl font-bold text-stone-700 outline-none focus:border-blue-300 text-sm" placeholder={newItemType === 'asset' ? "เช่น เตาปิ้ง, ตู้เย็น" : newItemType === 'service' ? "เช่น ค่าขนส่งพิเศษ, ค่าซ่อม" : "เช่น ถุงร้อน, นมข้น"} />
                 </div>
             </div>
 
@@ -202,7 +206,7 @@ const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ onConfirm }) => {
                         </div>
                     </div>
                 </div>
-            ) : (
+            ) : newItemType === 'asset' ? (
                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 bg-purple-50 p-4 rounded-2xl border border-purple-100">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -230,12 +234,25 @@ const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ onConfirm }) => {
                         <span className="font-black text-purple-600 text-lg">฿{dailyDepreciation.toFixed(2)}</span>
                     </div>
                 </div>
+            ) : (
+                /* SERVICE TYPE */
+                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 bg-rose-50 p-4 rounded-2xl border border-rose-100">
+                    <div>
+                        <label className="text-[10px] font-bold text-rose-400 uppercase ml-1 block mb-1">ค่าใช้จ่ายรวม (บาท)</label>
+                        <input type="number" value={newItemPrice} onChange={e => setNewItemPrice(e.target.value)} className="w-full px-4 py-3 bg-white border border-rose-200 rounded-xl font-black text-rose-600 outline-none focus:border-rose-400 text-xl" placeholder="0.00" />
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-rose-500 text-xs font-bold bg-white p-3 rounded-xl border border-rose-100">
+                        <AlertCircle size={16}/>
+                        <span>รายการนี้จะไม่ถูกนับสต็อก (บันทึกบัญชีอย่างเดียว)</span>
+                    </div>
+                </div>
             )}
 
             <button 
                 onClick={handleCreate}
                 disabled={!newItemName || !newItemPrice}
-                className={`w-full py-3.5 text-white rounded-xl font-bold shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${newItemType === 'asset' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200' : 'bg-blue-500 hover:bg-blue-600 shadow-blue-200'}`}
+                className={`w-full py-3.5 text-white rounded-xl font-bold shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${newItemType === 'asset' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200' : newItemType === 'service' ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-200' : 'bg-blue-500 hover:bg-blue-600 shadow-blue-200'}`}
             >
                 <Plus size={18}/> เพิ่มลงบิล
             </button>

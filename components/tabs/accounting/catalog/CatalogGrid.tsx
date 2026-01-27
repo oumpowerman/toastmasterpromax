@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Archive, Armchair, Box, Calculator, Plus, Wheat } from 'lucide-react';
+import { Archive, Armchair, Box, Calculator, Plus, Wheat, Banknote } from 'lucide-react';
 import { Supplier } from '../../../../types';
 
 interface CatalogGridProps {
@@ -9,10 +9,10 @@ interface CatalogGridProps {
     onItemClick: (item: any) => void;
     bulkMode: boolean;
     type: 'income' | 'expense';
-    activeTab: 'stock' | 'assets' | 'new';
+    activeTab: 'stock' | 'assets' | 'services' | 'new';
     selectedSupplierId: string;
     suppliers: Supplier[];
-    onSwitchTab: (tab: 'stock' | 'assets' | 'new') => void;
+    onSwitchTab: (tab: 'stock' | 'assets' | 'services' | 'new') => void;
 }
 
 const CatalogGrid: React.FC<CatalogGridProps> = ({
@@ -27,6 +27,24 @@ const CatalogGrid: React.FC<CatalogGridProps> = ({
             if (prod) return { price: prod.price, isSpecial: true };
         }
         return { price: item.bulkPrice || 0, isSpecial: false };
+    };
+
+    // Helper to get Icon
+    const getItemIcon = (item: any) => {
+        if (activeTab === 'services' && item.icon) {
+            return React.createElement(item.icon, { size: 20 });
+        }
+        if (item.category === 'packaging') return <Box size={20}/>;
+        if (item.type === 'asset') return <Armchair size={20}/>;
+        return <Wheat size={20}/>;
+    };
+
+    // Helper for Color Theme
+    const getThemeClass = (item: any) => {
+        if (activeTab === 'services') return 'text-rose-400 group-hover:bg-rose-50 group-hover:text-rose-500';
+        if (item.category === 'packaging') return 'text-blue-300 group-hover:bg-blue-50 group-hover:text-blue-500';
+        if (item.type === 'asset') return 'text-purple-300 group-hover:bg-purple-50 group-hover:text-purple-500';
+        return 'text-orange-300 group-hover:bg-orange-50 group-hover:text-orange-500';
     };
 
     return (
@@ -47,17 +65,22 @@ const CatalogGrid: React.FC<CatalogGridProps> = ({
                         {item.image ? (
                             <img src={item.image} className={`${viewMode === 'grid' ? 'w-12 h-12' : 'w-10 h-10'} rounded-xl object-cover bg-stone-50`}/> 
                         ) : (
-                            <div className={`${viewMode === 'grid' ? 'w-12 h-12' : 'w-10 h-10'} bg-stone-50 rounded-xl flex items-center justify-center transition-colors ${item.category === 'packaging' ? 'text-blue-300 group-hover:bg-blue-50 group-hover:text-blue-500' : item.type === 'asset' ? 'text-purple-300 group-hover:bg-purple-50 group-hover:text-purple-500' : 'text-orange-300 group-hover:bg-orange-50 group-hover:text-orange-500'}`}>
-                                {item.category === 'packaging' ? <Box size={20}/> : item.type === 'asset' ? <Armchair size={20}/> : <Wheat size={20}/>}
+                            <div className={`${viewMode === 'grid' ? 'w-12 h-12' : 'w-10 h-10'} bg-stone-50 rounded-xl flex items-center justify-center transition-colors ${getThemeClass(item)}`}>
+                                {getItemIcon(item)}
                             </div>
                         )}
                         <div className="w-full min-w-0">
                             <p className={`font-bold text-stone-700 text-xs leading-tight ${viewMode === 'grid' ? 'line-clamp-2' : 'truncate'}`}>{item.name}</p>
-                            <p className="text-[10px] text-stone-400 mt-1">
-                                {isSpecial ? <span className="text-blue-500 font-bold">฿{price}</span> : `฿${price}`}
-                                <span className="opacity-50 mx-1">|</span> 
-                                {item.totalQuantity || 1} {item.unit || 'ชิ้น'}
-                            </p>
+                            
+                            {activeTab !== 'services' ? (
+                                <p className="text-[10px] text-stone-400 mt-1">
+                                    {isSpecial ? <span className="text-blue-500 font-bold">฿{price}</span> : `฿${price}`}
+                                    <span className="opacity-50 mx-1">|</span> 
+                                    {item.totalQuantity || 1} {item.unit || 'ชิ้น'}
+                                </p>
+                            ) : (
+                                <p className="text-[10px] text-rose-400 mt-1 font-bold">ค่าใช้จ่าย</p>
+                            )}
                         </div>
                         
                         {bulkMode && type === 'expense' && activeTab === 'stock' ? (

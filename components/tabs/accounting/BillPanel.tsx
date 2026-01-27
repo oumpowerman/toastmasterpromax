@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
-import { Receipt, CheckCircle2, Plus, Minus, X, Trash2, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { PAYMENT_CHANNELS } from '../../../constants';
+import { Receipt, CheckCircle2, Plus, Minus, X, Trash2, Image as ImageIcon, Loader2, Split, Layers } from 'lucide-react';
+import { PAYMENT_CHANNELS, ACCOUNTING_CATEGORIES } from '../../../constants';
 import { Supplier } from '../../../types';
 import { SmartScannerButton } from './SmartTransactionComponents';
 import { StockDeductionItem } from './TransactionForm';
@@ -21,16 +21,19 @@ interface BillPanelProps {
     onRemoveItem: (id: string) => void;
     suppliers: Supplier[];
     onAddSupplier?: (data: any) => void;
-    onOpenAddSupplier?: () => void; // New Prop
+    onOpenAddSupplier?: () => void; 
     onAIResult: (items: any[]) => void;
     onSubmit: () => void;
     type: 'income' | 'expense';
+    isSplitMode?: boolean; // New Prop
+    setIsSplitMode?: (val: boolean) => void; // New Prop
 }
 
 const BillPanel: React.FC<BillPanelProps> = ({
     date, setDate, title, setTitle, paymentChannel, setPaymentChannel,
     supplierId, setSupplierId, category, setCategory, slipImage, setSlipImage,
-    billItems, onUpdateItem, onRemoveItem, suppliers, onAddSupplier, onOpenAddSupplier, onAIResult, onSubmit, type
+    billItems, onUpdateItem, onRemoveItem, suppliers, onAddSupplier, onOpenAddSupplier, onAIResult, onSubmit, type,
+    isSplitMode = false, setIsSplitMode
 }) => {
     const { showAlert } = useAlert();
     const [isProcessingAI, setIsProcessingAI] = useState(false);
@@ -84,6 +87,8 @@ const BillPanel: React.FC<BillPanelProps> = ({
         }
     };
 
+    const expenseCategories = ACCOUNTING_CATEGORIES.expense;
+
     return (
         <div className="flex flex-col bg-white h-full overflow-hidden shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 relative w-full min-h-0">
             <div className="p-4 md:p-6 flex-1 overflow-y-auto custom-scrollbar space-y-6 min-h-0">
@@ -132,7 +137,39 @@ const BillPanel: React.FC<BillPanelProps> = ({
                         </div>
                     </div>
 
-                    {type === 'expense' && (
+                    {/* Category Selector with Split Mode Toggle */}
+                    <div>
+                        <div className="flex justify-between items-end mb-1">
+                            <label className="text-[10px] font-bold text-stone-400 uppercase block">หมวดหมู่ ({type === 'income' ? 'รับ' : 'จ่าย'})</label>
+                            {setIsSplitMode && type === 'expense' && (
+                                <button 
+                                    onClick={() => setIsSplitMode(!isSplitMode)}
+                                    className={`text-[10px] font-bold flex items-center gap-1 px-2 py-0.5 rounded-lg transition-all ${isSplitMode ? 'bg-purple-100 text-purple-600' : 'text-stone-400 hover:bg-stone-200'}`}
+                                >
+                                    {isSplitMode ? <Split size={12}/> : <Layers size={12}/>}
+                                    {isSplitMode ? 'แยกหมวดหมู่ (Split)' : 'รวมหมวดหมู่'}
+                                </button>
+                            )}
+                        </div>
+                        
+                        {isSplitMode ? (
+                            <div className="w-full px-3 py-2 rounded-xl border-2 border-dashed border-purple-200 bg-purple-50 text-purple-400 text-sm font-bold text-center">
+                                ระบุหมวดหมู่ในแต่ละรายการด้านล่าง 👇
+                            </div>
+                        ) : (
+                            <select 
+                                value={category} 
+                                onChange={e => setCategory(e.target.value)} 
+                                className="w-full px-3 py-2 rounded-xl border font-bold text-stone-600 text-sm outline-none focus:border-orange-400"
+                            >
+                                {(type === 'income' ? ACCOUNTING_CATEGORIES.income : ACCOUNTING_CATEGORIES.expense).map(c => (
+                                    <option key={c.id} value={c.id}>{c.label}</option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+
+                    {type === 'expense' && !isSplitMode && (category === 'raw_material' || category === 'packaging' || category === 'equipment') && (
                         <div>
                             <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 block">ร้านค้า (Supplier)</label>
                             <div className="flex gap-2">
@@ -180,10 +217,26 @@ const BillPanel: React.FC<BillPanelProps> = ({
                                 <div className="flex justify-between items-start">
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-stone-700 text-sm truncate">{item.name}</p>
-                                        <div className="flex gap-1 mt-0.5">
-                                            {item.isNew && <span className="text-[8px] bg-green-100 text-green-600 px-1.5 rounded-md font-bold">New</span>}
-                                            {item.category === 'asset' && <span className="text-[8px] bg-purple-100 text-purple-600 px-1.5 rounded-md font-bold">Asset</span>}
-                                        </div>
+                                        
+                                        {/* Split Mode: Category Selector per item */}
+                                        {isSplitMode && type === 'expense' ? (
+                                            <div className="mt-1">
+                                                <select 
+                                                    value={item.category || 'general'} 
+                                                    onChange={(e) => onUpdateItem(item.id, { category: e.target.value })}
+                                                    className="text-[10px] bg-stone-50 border border-stone-200 rounded-lg px-1 py-0.5 font-bold text-stone-500 outline-none focus:border-purple-300 w-full max-w-[150px]"
+                                                >
+                                                    {expenseCategories.map(c => (
+                                                        <option key={c.id} value={c.id}>{c.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        ) : (
+                                            <div className="flex gap-1 mt-0.5">
+                                                {item.isNew && <span className="text-[8px] bg-green-100 text-green-600 px-1.5 rounded-md font-bold">New</span>}
+                                                {item.category === 'asset' && <span className="text-[8px] bg-purple-100 text-purple-600 px-1.5 rounded-md font-bold">Asset</span>}
+                                            </div>
+                                        )}
                                     </div>
                                     <button onClick={() => onRemoveItem(item.id)} className="text-stone-300 hover:text-red-500"><X size={16}/></button>
                                 </div>
