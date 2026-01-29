@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Wallet, ArrowUpRight, ArrowDownLeft, CalendarRange, Trash2, ArrowRight, ScanLine, Clock, PiggyBank, TrendingUp, TrendingDown, Diamond, Percent, Calendar, PieChart } from 'lucide-react';
+import { Wallet, ArrowUpRight, ArrowDownLeft, CalendarRange, Trash2, ArrowRight, ScanLine, Clock, PiggyBank, TrendingUp, TrendingDown, Diamond, Percent, Calendar, PieChart, HelpCircle } from 'lucide-react';
 import { LedgerItem } from '../../../types';
 import { ACCOUNTING_CATEGORIES, PAYMENT_CHANNELS } from '../../../constants';
 
@@ -17,15 +16,25 @@ export const AccountingHeader: React.FC<{
     onOpenIncome: () => void;
     onOpenExpense: () => void;
     onOpenScanner: () => void;
-    onOpenMonthly: () => void; // New Prop
-}> = ({ onOpenIncome, onOpenExpense, onOpenScanner, onOpenMonthly }) => (
+    onOpenMonthly: () => void;
+    onOpenGuide: () => void; // New Prop
+}> = ({ onOpenIncome, onOpenExpense, onOpenScanner, onOpenMonthly, onOpenGuide }) => (
     <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-4">
-        <div>
-            <h2 className="text-3xl md:text-4xl font-black text-stone-800 flex items-center gap-3 font-cute tracking-tight drop-shadow-sm">
-                <span className="text-4xl animate-bounce delay-700">📒</span>
-                บัญชีร้าน (Accounting)
-            </h2>
-            <p className="text-stone-400 font-bold text-sm md:text-base mt-2 font-cute ml-1">จดครบ จบง่าย กำไรเห็นๆ ✨</p>
+        <div className="flex items-start gap-3">
+            <div>
+                <h2 className="text-3xl md:text-4xl font-black text-stone-800 flex items-center gap-3 font-cute tracking-tight drop-shadow-sm">
+                    <span className="text-4xl animate-bounce delay-700">📒</span>
+                    บัญชีร้าน (Accounting)
+                </h2>
+                <p className="text-stone-400 font-bold text-sm md:text-base mt-2 font-cute ml-1">จดครบ จบง่าย กำไรเห็นๆ ✨</p>
+            </div>
+            <button 
+                onClick={onOpenGuide}
+                className="mt-1 w-8 h-8 rounded-full bg-stone-100 text-stone-400 hover:bg-orange-100 hover:text-orange-500 flex items-center justify-center transition-all shadow-sm hover:scale-110"
+                title="คู่มือการใช้งาน"
+            >
+                <HelpCircle size={18} strokeWidth={2.5} />
+            </button>
         </div>
         
         <div className="flex flex-wrap gap-3">
@@ -96,8 +105,8 @@ export const AccountingStatsCards: React.FC<{ stats: any }> = ({ stats }) => (
             <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-100 rounded-full opacity-50 blur-xl group-hover:scale-125 transition-transform"></div>
             <div className="relative z-10">
                 <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-xl shadow-sm">💰</div>
-                    <p className="text-sm font-bold text-emerald-700 uppercase tracking-wider">รายรับรวม</p>
+                    <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-xl shadow-sm border border-emerald-100">💰</div>
+                    <p className="text-sm font-bold text-emerald-700 uppercase tracking-wider">รายรับจริง (Actual)</p>
                 </div>
                 <p className="text-3xl font-black text-emerald-600 drop-shadow-sm truncate">฿{stats.income.toLocaleString()}</p>
                 <p className="text-xs text-emerald-500 mt-1 font-bold bg-white/60 px-2 py-1 rounded-lg inline-block">เฉลี่ย ฿{stats.avgDailyIncome.toLocaleString(undefined, {maximumFractionDigits: 0})}/วัน</p>
@@ -109,11 +118,11 @@ export const AccountingStatsCards: React.FC<{ stats: any }> = ({ stats }) => (
             <div className="absolute -right-4 -top-4 w-24 h-24 bg-rose-100 rounded-full opacity-50 blur-xl group-hover:scale-125 transition-transform"></div>
             <div className="relative z-10">
                 <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-xl shadow-sm">💸</div>
-                    <p className="text-sm font-bold text-rose-700 uppercase tracking-wider">รายจ่ายรวม</p>
+                    <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-xl shadow-sm border border-rose-100">💸</div>
+                    <p className="text-sm font-bold text-rose-700 uppercase tracking-wider">จ่ายจริง (Actual)</p>
                 </div>
                 <p className="text-3xl font-black text-rose-600 drop-shadow-sm truncate">฿{stats.expense.toLocaleString()}</p>
-                <p className="text-xs text-rose-400 mt-1 font-bold truncate">หนักไปที่: {stats.topExpense ? getCategoryLabel('expense', stats.topExpense[0]) : '-'}</p>
+                <p className="text-xs text-rose-400 mt-1 font-bold truncate">เน้นไปที่: {stats.topExpense ? getCategoryLabel('expense', stats.topExpense[0]) : '-'}</p>
             </div>
         </div>
 
@@ -122,13 +131,16 @@ export const AccountingStatsCards: React.FC<{ stats: any }> = ({ stats }) => (
             <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-100 rounded-full opacity-50 blur-xl group-hover:scale-125 transition-transform"></div>
             <div className="relative z-10">
                 <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-xl shadow-sm">💎</div>
-                    <p className="text-sm font-bold text-blue-700 uppercase tracking-wider">กำไรสุทธิ</p>
+                    <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-xl shadow-sm border border-blue-100">💎</div>
+                    <p className="text-sm font-bold text-blue-700 uppercase tracking-wider">กำไรสะสม</p>
                 </div>
                 <p className={`text-3xl font-black drop-shadow-sm truncate ${stats.profit >= 0 ? 'text-blue-600' : 'text-red-500'}`}>
                     {stats.profit > 0 ? '+' : ''}฿{stats.profit.toLocaleString()}
                 </p>
-                <p className="text-xs text-blue-400 mt-1 font-bold bg-white/60 px-2 py-1 rounded-lg inline-block">Net Profit</p>
+                <div className="flex items-center gap-1 mt-1">
+                    <span className="text-xs text-blue-400 font-bold bg-white/60 px-2 py-1 rounded-lg">Real Performance</span>
+                    <TrendingUp size={12} className="text-blue-400"/>
+                </div>
             </div>
         </div>
 
@@ -137,13 +149,13 @@ export const AccountingStatsCards: React.FC<{ stats: any }> = ({ stats }) => (
             <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-purple-200 rounded-full opacity-40 blur-2xl group-hover:scale-125 transition-transform"></div>
             <div className="relative z-10">
                 <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-xl shadow-sm text-purple-500"><Percent size={20} strokeWidth={3}/></div>
+                    <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-xl shadow-sm text-purple-500 border border-purple-100"><Percent size={20} strokeWidth={3}/></div>
                     <p className="text-sm font-bold text-purple-700 uppercase tracking-wider">Net Margin</p>
                 </div>
                 <div className="flex items-baseline gap-2">
                     <p className="text-4xl font-black tracking-tight text-purple-600 truncate">{stats.netMargin.toFixed(1)}%</p>
                 </div>
-                <p className="text-xs text-purple-500 mt-1 font-bold bg-white/60 px-2 py-1 rounded-lg inline-block">{stats.netMargin > 20 ? 'กำไรดีเยี่ยม! 🚀' : 'พยายามเข้านะ ✌️'}</p>
+                <p className="text-xs text-purple-500 mt-1 font-bold bg-white/60 px-2 py-1 rounded-lg inline-block">{stats.netMargin > 20 ? 'เก่งมากครับบอส! 🚀' : 'มาถูกทางแล้วครับ ✌️'}</p>
             </div>
         </div>
     </div>

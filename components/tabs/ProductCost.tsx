@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChefHat, Archive, ChevronDown, MousePointerClick, Tag, FlaskConical, AlertTriangle } from 'lucide-react';
+import { ChefHat, Archive, ChevronDown, MousePointerClick, Tag, FlaskConical, AlertTriangle, HelpCircle } from 'lucide-react';
 import { AppState, MenuItem, IngredientLibraryItem, IngredientItem } from '../../types';
 import { useAlert } from '../AlertSystem';
 import { uploadImage } from '../../lib/supabase';
@@ -12,6 +12,7 @@ import RecipeEditor from './product/RecipeEditor';
 import CostAnalysisCard from './product/CostAnalysisCard';
 import HiddenCostPanel from './product/HiddenCostPanel';
 import PricingDoctor from './product/PricingDoctor';
+import ProductGuideModal from './product/ProductGuideModal';
 
 // Modals
 import MenuSelectorModal from '../modals/MenuSelectorModal';
@@ -63,6 +64,7 @@ const ProductCost: React.FC<ProductCostProps> = ({
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [showPantryModal, setShowPantryModal] = useState(false);
   const [showPantryPicker, setShowPantryPicker] = useState(false);
+  const [showGuide, setShowGuide] = useState(false); // NEW: Guide State
   
   // Analysis Detail State
   const [showAnalysisDetails, setShowAnalysisDetails] = useState(false);
@@ -184,12 +186,21 @@ const ProductCost: React.FC<ProductCostProps> = ({
 
         {/* TOP BAR: Header & Buttons */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-             <div>
-                <h2 className="text-3xl font-bold text-stone-800 font-cute flex items-center gap-2">
-                    <ChefHat className={isSimMode ? "text-purple-500" : "text-green-500"} size={32} />
-                    จัดการเมนู (Menu Engineering)
-                </h2>
-                <p className="text-stone-400 text-sm mt-1 font-cute">ออกแบบสูตรและคำนวณต้นทุนอย่างละเอียด</p>
+             <div className="flex items-center gap-3">
+                <div>
+                    <h2 className="text-3xl font-bold text-stone-800 font-cute flex items-center gap-2">
+                        <ChefHat className={isSimMode ? "text-purple-500" : "text-green-500"} size={32} />
+                        จัดการเมนู (Menu Engineering)
+                    </h2>
+                    <p className="text-stone-400 text-sm mt-1 font-cute">ออกแบบสูตรและคำนวณต้นทุนอย่างละเอียด</p>
+                </div>
+                <button 
+                    onClick={() => setShowGuide(true)}
+                    className="w-8 h-8 bg-stone-100 text-stone-400 rounded-full flex items-center justify-center hover:bg-green-100 hover:text-green-500 hover:scale-110 transition-all shadow-sm"
+                    title="คู่มือจัดการเมนู"
+                >
+                    <HelpCircle size={18} strokeWidth={2.5} />
+                </button>
              </div>
 
              <div className="flex items-center gap-3">
@@ -232,6 +243,8 @@ const ProductCost: React.FC<ProductCostProps> = ({
         </div>
         
         {/* --- MODALS --- */}
+        <ProductGuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />
+
         <MenuSelectorModal 
             isOpen={isMenuModalOpen}
             onClose={() => setIsMenuModalOpen(false)}

@@ -1,7 +1,7 @@
 
 import React, { memo, useState, useMemo } from 'react';
-import { Calendar, FileText, LogOut, Search, ChefHat, Utensils, Plus, ShoppingBag, Minus, Trash2, ArrowRight, History, Flame, LayoutGrid, List, Tag, Edit3, Settings2, Receipt, ReceiptText } from 'lucide-react';
-import { MenuItem, OrderItem } from '../../../types';
+import { Calendar, FileText, LogOut, Search, ChefHat, Utensils, Plus, ShoppingBag, Minus, Trash2, ArrowRight, History, Flame, LayoutGrid, List, Tag, Edit3, Settings2, Receipt, ReceiptText, Ban } from 'lucide-react';
+import { MenuItem, OrderItem, InventoryItem } from '../../../types';
 import { MODIFIERS } from './constants';
 
 // --- LEFT PANEL: MENU GRID ---
@@ -22,10 +22,11 @@ interface MenuGridProps {
     expiringMenuIds?: Set<string>; 
     separateItems: boolean; 
     setSeparateItems: (val: boolean) => void; 
+    inventory: InventoryItem[]; // Added Inventory Prop
 }
 
 export const MenuGrid = memo<MenuGridProps>(({
-    shiftDate, searchTerm, setSearchTerm, selectedCategory, setSelectedCategory, categories, filteredMenus, activeOrdersCount, addToCart, onCloseShift, onOpenHistory, onOpenAllHistory, onOpenKDS, expiringMenuIds, separateItems, setSeparateItems
+    shiftDate, searchTerm, setSearchTerm, selectedCategory, setSelectedCategory, categories, filteredMenus, activeOrdersCount, addToCart, onCloseShift, onOpenHistory, onOpenAllHistory, onOpenKDS, expiringMenuIds, separateItems, setSeparateItems, inventory
 }) => {
     
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -39,6 +40,28 @@ export const MenuGrid = memo<MenuGridProps>(({
         });
         return groups;
     }, [filteredMenus]);
+
+    // Helper to check stock
+    const checkStockStatus = (menu: MenuItem) => {
+        // If no ingredients mapped, assume available (or service item)
+        if (!menu.ingredients || menu.ingredients.length === 0) return { available: true };
+
+        for (const ing of menu.ingredients) {
+            // Find matching inventory item (Prever Master ID, then Name)
+            const stockItem = inventory.find(inv => 
+                (ing.masterId && inv.id === ing.masterId) || 
+                (inv.name.trim().toLowerCase() === ing.name.trim().toLowerCase())
+            );
+
+            if (stockItem) {
+                // Check if stock is enough for at least 1 order
+                if (stockItem.quantity < (ing.quantity || 0)) {
+                    return { available: false, missing: stockItem.name };
+                }
+            }
+        }
+        return { available: true };
+    };
 
     return (
         <div className="flex-1 flex flex-col bg-white rounded-[2.5rem] border-2 border-stone-100 shadow-sm overflow-hidden relative">
@@ -158,18 +181,29 @@ export const MenuGrid = memo<MenuGridProps>(({
                                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
                                     {(items as MenuItem[]).map(menu => {
                                         const isCheerSell = expiringMenuIds?.has(menu.id);
+                                        const { available, missing } = checkStockStatus(menu);
+
                                         return (
                                             <div 
                                                 key={menu.id}
-                                                className={`relative group flex flex-col h-full bg-white rounded-[2.5rem] border-2 transition-all hover:shadow-xl overflow-hidden ${isCheerSell ? 'border-orange-400 shadow-lg shadow-orange-100 ring-2 ring-orange-200 ring-offset-2' : 'border-stone-100 hover:border-orange-400'}`}
+                                                className={`relative group flex flex-col h-full bg-white rounded-[2.5rem] border-2 transition-all overflow-hidden ${!available ? 'opacity-60 border-stone-200 grayscale-[0.8]' : isCheerSell ? 'border-orange-400 shadow-lg shadow-orange-100 ring-2 ring-orange-200 ring-offset-2 hover:shadow-xl' : 'border-stone-100 hover:border-orange-400 hover:shadow-lg'}`}
                                             >
                                                 <button 
-                                                    onClick={() => addToCart(menu, false)}
-                                                    className="flex flex-col justify-between h-full text-left active:scale-95 transition-transform"
+                                                    onClick={() => available && addToCart(menu, false)}
+                                                    disabled={!available}
+                                                    className="flex flex-col justify-between h-full text-left active:scale-95 transition-transform disabled:cursor-not-allowed"
                                                 >
-                                                    {isCheerSell && (
+                                                    {isCheerSell && available && (
                                                         <div className="absolute top-0 left-0 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-br-xl z-20 flex items-center gap-1 animate-pulse shadow-md">
                                                             <Flame size={12} fill="white"/> เชียร์ขาย
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {!available && (
+                                                        <div className="absolute inset-0 z-30 bg-white/50 flex items-center justify-center backdrop-blur-[1px]">
+                                                            <div className="bg-stone-800 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg flex items-center gap-2">
+                                                                <Ban size={14}/> หมด ({missing})
+                                                            </div>
                                                         </div>
                                                     )}
 
@@ -200,8 +234,9 @@ export const MenuGrid = memo<MenuGridProps>(({
                                                 
                                                 {/* Edit Button (Absolute Top Right) */}
                                                 <button 
-                                                    onClick={(e) => { e.stopPropagation(); addToCart(menu, true); }}
-                                                    className="absolute top-2 right-2 p-2 bg-white/90 rounded-full text-stone-400 hover:text-orange-500 hover:bg-white shadow-sm transition-all z-30 opacity-0 group-hover:opacity-100"
+                                                    onClick={(e) => { e.stopPropagation(); if(available) addToCart(menu, true); }}
+                                                    disabled={!available}
+                                                    className="absolute top-2 right-2 p-2 bg-white/90 rounded-full text-stone-400 hover:text-orange-500 hover:bg-white shadow-sm transition-all z-30 opacity-0 group-hover:opacity-100 disabled:opacity-0"
                                                     title="ปรับแต่ง"
                                                 >
                                                     <Edit3 size={16} />
@@ -214,22 +249,24 @@ export const MenuGrid = memo<MenuGridProps>(({
                                 <div className="flex flex-col gap-3">
                                     {(items as MenuItem[]).map(menu => {
                                         const isCheerSell = expiringMenuIds?.has(menu.id);
+                                        const { available, missing } = checkStockStatus(menu);
+
                                         return (
                                             <div 
                                                 key={menu.id}
-                                                className={`flex items-center p-3 rounded-2xl border-2 bg-white hover:border-orange-300 transition-all group relative ${isCheerSell ? 'border-orange-300 bg-orange-50/30' : 'border-stone-100'}`}
+                                                className={`flex items-center p-3 rounded-2xl border-2 transition-all group relative ${!available ? 'bg-stone-50 border-stone-200 opacity-60' : isCheerSell ? 'border-orange-300 bg-orange-50/30 hover:border-orange-400 bg-white' : 'border-stone-100 bg-white hover:border-orange-300'}`}
                                             >
                                                 <div 
-                                                    className="flex-1 flex items-center gap-3 cursor-pointer"
-                                                    onClick={() => addToCart(menu, false)}
+                                                    className={`flex-1 flex items-center gap-3 ${available ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                                                    onClick={() => available && addToCart(menu, false)}
                                                 >
                                                     <div className="w-16 h-16 rounded-xl overflow-hidden bg-stone-100 border border-stone-200 shrink-0 relative">
                                                         {menu.image ? (
-                                                            <img src={menu.image} alt={menu.name} className="w-full h-full object-cover" />
+                                                            <img src={menu.image} alt={menu.name} className={`w-full h-full object-cover ${!available ? 'grayscale' : ''}`} />
                                                         ) : (
                                                             <div className="flex items-center justify-center h-full text-stone-300"><Utensils size={24}/></div>
                                                         )}
-                                                        {isCheerSell && (
+                                                        {isCheerSell && available && (
                                                             <div className="absolute bottom-0 w-full bg-red-500 text-white text-[8px] font-bold text-center py-0.5">
                                                                 HOT
                                                             </div>
@@ -237,7 +274,10 @@ export const MenuGrid = memo<MenuGridProps>(({
                                                     </div>
 
                                                     <div className="flex-1 min-w-0">
-                                                        <h4 className="font-bold text-stone-700 text-lg line-clamp-1">{menu.name}</h4>
+                                                        <h4 className="font-bold text-stone-700 text-lg line-clamp-1">
+                                                            {menu.name} 
+                                                            {!available && <span className="text-red-500 text-xs ml-2">(หมด: {missing})</span>}
+                                                        </h4>
                                                         <div className="flex items-center gap-2 text-xs text-stone-400 font-bold mt-0.5">
                                                             <Tag size={12}/> {menu.category || 'General'} 
                                                             <span className="w-1 h-1 bg-stone-300 rounded-full"></span>
@@ -247,7 +287,7 @@ export const MenuGrid = memo<MenuGridProps>(({
 
                                                     <div className="flex items-center gap-4">
                                                         <span className="text-2xl font-black text-stone-800">฿{menu.sellingPrice}</span>
-                                                        <div className="w-10 h-10 rounded-full bg-stone-100 text-stone-400 flex items-center justify-center group-hover:bg-orange-400 group-hover:text-white transition-colors">
+                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${available ? 'bg-stone-100 text-stone-400 group-hover:bg-orange-400 group-hover:text-white' : 'bg-stone-200 text-stone-300'}`}>
                                                             <Plus size={20} strokeWidth={3}/>
                                                         </div>
                                                     </div>
@@ -255,8 +295,9 @@ export const MenuGrid = memo<MenuGridProps>(({
                                                 
                                                 {/* Edit Button */}
                                                 <button 
-                                                    onClick={() => addToCart(menu, true)}
-                                                    className="ml-2 p-2 rounded-xl text-stone-300 hover:text-orange-500 hover:bg-orange-50 transition-colors"
+                                                    onClick={() => available && addToCart(menu, true)}
+                                                    disabled={!available}
+                                                    className="ml-2 p-2 rounded-xl text-stone-300 hover:text-orange-500 hover:bg-orange-50 transition-colors disabled:opacity-0"
                                                 >
                                                     <Edit3 size={18} />
                                                 </button>

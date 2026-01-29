@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Zap, X } from 'lucide-react';
 import { LedgerItem, AppState, MenuItem, InventoryItem } from '../../types';
@@ -6,11 +5,12 @@ import { useAlert } from '../AlertSystem';
 import { calculateAccountingStats } from '../../utils/calculations';
 
 // Refactored Modular Components
-import { useDailyCostEngine } from './accounting/useDailyCost';
-import FinancialStats from './accounting/FinancialStats';
-import LedgerFeed from './accounting/LedgerFeed';
-import TransactionForm, { StockDeductionItem } from './accounting/TransactionForm';
-import { AccountingHeader, AccountingDateControl } from './accounting/AccountingViews';
+import { useDailyCostEngine } from '@/components/tabs/accounting/useDailyCost';
+import FinancialStats from '@/components/tabs/accounting/FinancialStats';
+import LedgerFeed from '@/components/tabs/accounting/LedgerFeed';
+import TransactionForm, { StockDeductionItem } from '@/components/tabs/accounting/TransactionForm';
+import { AccountingHeader, AccountingDateControl } from '@/components/tabs/accounting/AccountingViews';
+import AccountingGuideModal from '@/components/tabs/accounting/AccountingGuideModal';
 
 // Legacy/Shared Modals
 import MonthlySummaryModal from '../modals/MonthlySummaryModal';
@@ -44,6 +44,7 @@ const Accounting: React.FC<AccountingProps> = ({
   
   const [showScanner, setShowScanner] = useState(false);
   const [showMonthlyReport, setShowMonthlyReport] = useState(false);
+  const [showGuide, setShowGuide] = useState(false); // NEW
   const [viewingSlip, setViewingSlip] = useState<string | null>(null);
 
   const [dateRange, setDateRange] = useState({
@@ -111,15 +112,25 @@ const Accounting: React.FC<AccountingProps> = ({
       const itemsToSave = Array.isArray(itemData) ? itemData : [itemData];
       
       if (editingItem) {
-          // If editing, we assume single item update for now (split edit is complex)
-          if (Array.isArray(itemData)) {
-              await showAlert("ไม่สามารถแก้ไขเป็นหลายรายการได้", "error");
-              return;
+          // If editing, check if user tried to split into multiple items
+          if (itemsToSave.length > 1) {
+              // SPLIT CASE: User edited a single bill into multiple categories
+              if (await showConfirm("รายการนี้ถูกเปลี่ยนเป็นหลายหมวดหมู่ ระบบจะแยกเป็นหลายบิลให้ใหม่ ยืนยันไหมครับ?")) {
+                  // 1. Delete Old
+                  deleteLedgerItem(editingItem.id);
+                  // 2. Add News
+                  itemsToSave.forEach(item => addLedgerItem(item));
+                  await showAlert(`แยกรายการเป็น ${itemsToSave.length} บิลเรียบร้อย`, 'success');
+              } else {
+                  return; // Cancel action
+              }
+          } else {
+              // NORMAL CASE: Update Single Item
+              updateLedgerItem(editingItem.id, itemsToSave[0]);
+              await showAlert("แก้ไขรายการเรียบร้อย", 'success');
           }
-          updateLedgerItem(editingItem.id, itemData);
-          await showAlert("แก้ไขรายการเรียบร้อย", 'success');
       } else {
-          // Add New
+          // Add New (Standard)
           itemsToSave.forEach(item => {
               addLedgerItem(item);
           });
@@ -132,21 +143,20 @@ const Accounting: React.FC<AccountingProps> = ({
                 for (const deduction of stockDeductions) {
                     // Logic: If refId is 'new-item', we CREATE it first
                     if (deduction.refId === 'new-item' && addSingleItem) {
-                        const isAsset = deduction.category === 'asset' || (deduction.type === 'inventory' && (itemsToSave[0]?.category === 'equipment' || deduction.category === 'equipment')); // Infer from deduction category if available
+                        const isAsset = deduction.category === 'asset' || (deduction.type === 'inventory' && (itemsToSave[0]?.category === 'equipment' || deduction.category === 'equipment')); 
                         
                         const newItem: InventoryItem = {
                             id: `auto-gen-${Date.now()}-${Math.random()}`,
                             name: deduction.name,
                             quantity: deduction.qty, // Initial Qty
                             unit: deduction.unit || 'ชิ้น',
-                            // Use explicit fields from deduction item if available
                             minLevel: deduction.minLevel ?? (isAsset ? 0 : 5),
                             costPerUnit: deduction.costPerUnit || 0,
                             category: deduction.category || (isAsset ? 'asset' : 'ingredient'),
                             type: isAsset ? 'asset' : 'stock',
                             lastUpdated: new Date().toISOString(),
                             
-                            // Asset props from deduction item
+                            // Asset props
                             lifespanDays: isAsset ? (deduction.lifespanDays || 365) : undefined,
                             salvagePrice: isAsset ? (deduction.salvagePrice || 0) : undefined,
                             purchaseDate: itemsToSave[0].date
@@ -160,19 +170,6 @@ const Accounting: React.FC<AccountingProps> = ({
                         const invIndex = newInventory.findIndex(i => i.id === deduction.refId);
                         
                         if (invIndex >= 0) {
-                            // Check if ANY of the split items is a 'buy' category?
-                            // Actually, stock logic is independent of ledger category in split mode.
-                            // If we are in TransactionForm, it implies 'expense' usually adds stock if it's 'raw_material'.
-                            // BUT in Split Mode, we might mix 'rent' and 'raw_material'.
-                            // The deduction item itself should ideally carry intent.
-                            // Current logic assumes: type='expense' & cat in [raw, pack] = Add.
-                            // Let's assume if we have stockDeductions passed, we WANT to process them.
-                            // We need to know if it's ADD or REMOVE.
-                            // 'TransactionForm' handles expense (ADD) mostly. Income is usually deduct (sales).
-                            
-                            // Simplified logic: If formType was 'expense', we ADD to stock.
-                            // (Unless we add a specific 'action' field to StockDeductionItem later)
-                            
                             if (formType === 'expense') {
                                 // --- STOCK IN (ADD) ---
                                 const currentItem = newInventory[invIndex];
@@ -203,7 +200,7 @@ const Accounting: React.FC<AccountingProps> = ({
                             processedCount++;
                         }
                     } else if (deduction.type === 'menu') {
-                        // Menu Deduct (Existing logic preserved)
+                        // Menu Deduct
                         const menu = menuItems.find(m => m.id === deduction.refId);
                         if (menu) {
                             menu.ingredients.forEach(ing => {
@@ -238,7 +235,7 @@ const Accounting: React.FC<AccountingProps> = ({
                     }
                 }
           } else {
-              await showAlert(itemsToSave.length > 1 ? `บันทึกแยก ${itemsToSave.length} รายการเรียบร้อย` : "บันทึกรายการเรียบร้อย", 'success');
+              if(!editingItem) await showAlert(itemsToSave.length > 1 ? `บันทึกแยก ${itemsToSave.length} รายการเรียบร้อย` : "บันทึกรายการเรียบร้อย", 'success');
           }
       }
       setShowForm(false);
@@ -306,6 +303,7 @@ const Accounting: React.FC<AccountingProps> = ({
             onOpenExpense={() => { setFormType('expense'); setFormCategory('raw_material'); setEditingItem(undefined); setShowForm(true); }}
             onOpenScanner={() => setShowScanner(true)}
             onOpenMonthly={() => setShowMonthlyReport(true)}
+            onOpenGuide={() => setShowGuide(true)}
         />
 
         <AccountingDateControl dateRange={dateRange} setDateRange={setDateRange} setPresetRange={setPresetRange}>
@@ -330,6 +328,8 @@ const Accounting: React.FC<AccountingProps> = ({
         />
 
         {/* --- MODALS --- */}
+        
+        <AccountingGuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />
 
         <TransactionForm 
             isOpen={showForm}

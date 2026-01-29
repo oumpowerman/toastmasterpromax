@@ -342,7 +342,23 @@ const OrderTaking: React.FC<OrderTakingProps> = ({ state, processOrder, updateOr
     return (
         <div className="h-[calc(100vh-2rem)] flex flex-col xl:flex-row gap-4 animate-in fade-in font-cute pb-2 relative">
             <MenuGrid 
-                shiftDate={shiftDate} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} categories={categories} filteredMenus={filteredMenus} activeOrdersCount={activeOrders.length} addToCart={handleAddToCart} onCloseShift={handleCloseShift} onOpenHistory={() => setShowHistory(true)} onOpenAllHistory={() => setShowAllOrdersHistory(true)} onOpenKDS={() => setShowKDS(true)} expiringMenuIds={expiringMenuIds} separateItems={separateItems} setSeparateItems={setSeparateItems}
+                shiftDate={shiftDate} 
+                searchTerm={searchTerm} 
+                setSearchTerm={setSearchTerm} 
+                selectedCategory={selectedCategory} 
+                setSelectedCategory={setSelectedCategory} 
+                categories={categories} 
+                filteredMenus={filteredMenus} 
+                activeOrdersCount={activeOrders.length} 
+                addToCart={handleAddToCart} 
+                onCloseShift={handleCloseShift} 
+                onOpenHistory={() => setShowHistory(true)} 
+                onOpenAllHistory={() => setShowAllOrdersHistory(true)} 
+                onOpenKDS={() => setShowKDS(true)} 
+                expiringMenuIds={expiringMenuIds} 
+                separateItems={separateItems} 
+                setSeparateItems={setSeparateItems}
+                inventory={state.inventory} // Pass inventory for stock check
             />
             
             <CartPanel 

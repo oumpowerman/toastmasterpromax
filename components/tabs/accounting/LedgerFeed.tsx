@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Calendar, Wallet, ArrowUpRight, ArrowDownLeft, Trash2, ScanLine, Clock } from 'lucide-react';
 import { LedgerItem } from '../../../types';
-import { getCategoryLabel } from './AccountingViews';
+import { getCategoryLabel } from '@/components/tabs/accounting/AccountingViews';
 
 interface LedgerFeedProps {
     groupedLedger: [string, LedgerItem[]][];
