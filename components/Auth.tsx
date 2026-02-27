@@ -94,7 +94,7 @@ const AuthScreen: React.FC = () => {
           <p className="text-stone-500 font-bold mt-1 text-lg">ระบบจัดการร้านปังปิ้ง Profit Pro</p>
       </div>
 
-      <div className="bg-white p-8 rounded-[3rem] shadow-2xl border-4 border-white w-full max-w-md relative overflow-hidden animate-in zoom-in-95 duration-500">
+      <div className="bg-white p-8 rounded-[3rem] shadow-2xl border-4 border-white w-full max-w-md relative overflow-hidden animate-bounce-in">
         
         {/* Dynamic Background Blob */}
         <div className={`absolute -top-20 -right-20 w-60 h-60 rounded-full blur-3xl opacity-20 transition-colors duration-500 ${mode === 'LOGIN' ? 'bg-orange-400' : mode === 'REGISTER' ? 'bg-blue-400' : 'bg-stone-400'}`}></div>

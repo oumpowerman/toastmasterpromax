@@ -93,9 +93,9 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <AlertContext.Provider value={{ showAlert, showConfirm }}>
       {children}
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm" onClick={config.type === 'confirm' ? undefined : handleConfirm}></div>
-          <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl relative z-10 overflow-hidden transform transition-all scale-100 p-6 text-center border-4 border-stone-50">
+          <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl relative z-10 overflow-hidden p-6 text-center border-4 border-stone-50 animate-bounce-in">
             
             <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${style.bg} ${style.color}`}>
               <Icon size={32} strokeWidth={2.5} />

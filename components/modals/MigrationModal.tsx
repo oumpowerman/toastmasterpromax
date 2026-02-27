@@ -32,7 +32,7 @@ const MigrationModal: React.FC<MigrationModalProps> = ({ isOpen, onClose, state,
             const oldSuppliers = state.suppliers || [];
             if (oldSuppliers.length === 0) {
                 // Default Supplier
-                oldSuppliers.push({ id: 'default', name: 'ทั่วไป/ตลาด', locationName: '', products: [], isHome: false });
+                oldSuppliers.push({ id: 'default', name: 'ทั่วไป/ตลาด', locationName: '', products: [], isHome: false, type: 'physical' });
             }
 
             for (const s of oldSuppliers) {
@@ -184,8 +184,8 @@ const MigrationModal: React.FC<MigrationModalProps> = ({ isOpen, onClose, state,
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/90 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white w-full max-w-lg rounded-3xl p-8 shadow-2xl relative border-4 border-white">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/90 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-lg rounded-3xl p-8 shadow-2xl relative border-4 border-white animate-bounce-in">
                 <div className="text-center mb-6">
                     <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500 animate-pulse">
                         <Database size={40} />

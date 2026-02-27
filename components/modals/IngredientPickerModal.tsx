@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
-import { Archive, X, Utensils, Plus, Box, FlaskConical, LayoutGrid, List, Wheat } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Archive, X, Utensils, Plus, Box, FlaskConical, LayoutGrid, List, Wheat, Filter } from 'lucide-react';
 import { IngredientLibraryItem } from '../../types';
+import SearchFilterBar from '../SearchFilterBar';
 
 interface IngredientPickerModalProps {
   isOpen: boolean;
@@ -15,26 +16,69 @@ const IngredientPickerModal: React.FC<IngredientPickerModalProps> = ({
   isOpen, onClose, centralIngredients, onPick, onOpenPantry 
 }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [activeTab, setActiveTab] = useState<'all' | 'ingredient' | 'packaging'>('all');
+  const [activeTab, setActiveTab] = useState<string>('all');
+  const [activeSubTab, setActiveSubTab] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Get unique sub-categories for the current main category
+  const availableSubCategories = useMemo(() => {
+    const subs = new Set<string>();
+    centralIngredients.forEach(i => {
+      if (i.category !== 'asset') {
+        const cat = i.category || 'ingredient';
+        if (activeTab === 'all' || cat === activeTab) {
+          if (i.subCategory && i.subCategory !== 'general') {
+            subs.add(i.subCategory);
+          }
+        }
+      }
+    });
+    return Array.from(subs).sort();
+  }, [centralIngredients, activeTab]);
+
+  // Filter Logic: Exclude Assets and apply search/category/sub-category filters
+  const displayedItems = useMemo(() => {
+    return centralIngredients
+      .filter(i => i.category !== 'asset')
+      .filter(i => {
+        // Category Filter
+        const cat = i.category || 'ingredient';
+        const matchesTab = activeTab === 'all' || cat === activeTab;
+        
+        // Sub-Category Filter
+        const matchesSubTab = activeSubTab === 'all' || i.subCategory === activeSubTab;
+
+        // Search Filter
+        const query = searchQuery.toLowerCase().trim();
+        const matchesSearch = !query || 
+          i.name.toLowerCase().includes(query) || 
+          (i.subCategory && i.subCategory.toLowerCase().includes(query));
+        
+        return matchesTab && matchesSubTab && matchesSearch;
+      });
+  }, [centralIngredients, activeTab, activeSubTab, searchQuery]);
 
   if (!isOpen) return null;
 
-  // Filter Logic: Exclude Assets
-  const allItems = centralIngredients.filter(i => i.category !== 'asset');
-  
-  const displayedItems = allItems.filter(i => {
-      const cat = i.category || 'ingredient';
-      if (activeTab === 'all') return true;
-      return cat === activeTab;
-  });
+  const filters = [
+    { id: 'all', label: 'ทั้งหมด', icon: Filter },
+    { id: 'ingredient', label: 'วัตถุดิบ', icon: Wheat, color: 'bg-orange-500 border-orange-500 text-white' },
+    { id: 'packaging', label: 'บรรจุภัณฑ์', icon: Box, color: 'bg-blue-500 border-blue-500 text-white' },
+    { id: 'composite', label: 'สูตรผสม', icon: FlaskConical, color: 'bg-purple-500 border-purple-500 text-white' },
+  ];
+
+  const subFilters = [
+    { id: 'all', label: 'ทุกประเภทย่อย' },
+    ...availableSubCategories.map(sub => ({ id: sub, label: sub }))
+  ];
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
-        <div className="bg-white w-full max-w-5xl max-h-[85vh] rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col animate-in zoom-in-95 border-4 border-white overflow-hidden">
+        <div className="bg-white w-full max-w-5xl max-h-[85vh] rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col animate-bounce-in border-4 border-white overflow-hidden">
             
             {/* Header */}
-            <div className="p-6 bg-stone-50 border-b border-stone-100 flex flex-col gap-4 shrink-0">
+            <div className="p-6 bg-stone-50 border-b border-stone-100 flex flex-col gap-6 shrink-0">
                 <div className="flex justify-between items-center">
                     <h3 className="font-bold text-2xl flex items-center gap-3 text-stone-800 font-cute">
                         <div className="bg-orange-100 p-2 rounded-xl text-orange-500">
@@ -65,26 +109,40 @@ const IngredientPickerModal: React.FC<IngredientPickerModalProps> = ({
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex gap-2">
-                    <button 
-                        onClick={() => setActiveTab('all')}
-                        className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all ${activeTab === 'all' ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-500 border-stone-100 hover:border-stone-300'}`}
-                    >
-                        ทั้งหมด ({allItems.length})
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('ingredient')}
-                        className={`px-4 py-2 rounded-xl text-sm font-bold border-2 flex items-center gap-2 transition-all ${activeTab === 'ingredient' ? 'bg-orange-100 text-orange-600 border-orange-200' : 'bg-white text-stone-500 border-stone-100 hover:border-orange-200 hover:text-orange-500'}`}
-                    >
-                        <Wheat size={16}/> วัตถุดิบ
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('packaging')}
-                        className={`px-4 py-2 rounded-xl text-sm font-bold border-2 flex items-center gap-2 transition-all ${activeTab === 'packaging' ? 'bg-blue-100 text-blue-600 border-blue-200' : 'bg-white text-stone-500 border-stone-100 hover:border-blue-200 hover:text-blue-500'}`}
-                    >
-                        <Box size={16}/> บรรจุภัณฑ์
-                    </button>
+                {/* Advanced Search & Filters */}
+                <div className="flex flex-col gap-4">
+                  <SearchFilterBar 
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    activeFilter={activeTab}
+                    onFilterChange={(id) => { setActiveTab(id); setActiveSubTab('all'); }}
+                    filters={filters}
+                    placeholder="ค้นหาชื่อวัตถุดิบ หรือประเภท..."
+                  />
+
+                  {/* Sub-Category Chips */}
+                  {availableSubCategories.length > 0 && (
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar -mt-2">
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] font-black text-stone-400 uppercase ml-1">ประเภทย่อย:</span>
+                        {subFilters.map((sub) => (
+                          <button
+                            key={sub.id}
+                            onClick={() => setActiveSubTab(sub.id)}
+                            className={`
+                              px-3 py-1.5 rounded-lg text-[10px] font-black whitespace-nowrap transition-all border
+                              ${activeSubTab === sub.id 
+                                ? 'bg-stone-200 border-stone-300 text-stone-700 shadow-sm' 
+                                : 'bg-white border-stone-100 text-stone-400 hover:border-stone-200 hover:text-stone-600'
+                              }
+                            `}
+                          >
+                            {sub.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
             </div>
 
@@ -93,9 +151,9 @@ const IngredientPickerModal: React.FC<IngredientPickerModalProps> = ({
                 {displayedItems.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 text-stone-300 font-cute">
                         <Archive size={48} className="mb-4 opacity-20" />
-                        <p className="font-bold text-lg">ไม่พบรายการในหมวดนี้</p>
-                        <button onClick={() => { onClose(); onOpenPantry(); }} className="text-orange-500 font-bold mt-2 underline hover:text-orange-600">
-                            ไปเพิ่มของในคลังก่อน
+                        <p className="font-bold text-lg">ไม่พบรายการที่ค้นหา</p>
+                        <button onClick={() => { setSearchQuery(''); setActiveTab('all'); }} className="text-orange-500 font-bold mt-2 underline hover:text-orange-600">
+                            ล้างการค้นหา
                         </button>
                     </div>
                 ) : (

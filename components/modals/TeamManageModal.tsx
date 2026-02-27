@@ -138,7 +138,7 @@ const TeamManageModal: React.FC<TeamManageModalProps> = ({ isOpen, onClose, curr
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm" onClick={onClose}></div>
-            <div className="bg-white w-full max-w-md rounded-[2.5rem] p-6 relative z-10 animate-in zoom-in-95 shadow-2xl border-4 border-white flex flex-col max-h-[90vh]">
+            <div className="bg-white w-full max-w-md rounded-[2.5rem] p-6 relative z-10 shadow-2xl border-4 border-white flex flex-col max-h-[90vh] animate-bounce-in">
                 <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full hover:bg-stone-100 text-stone-400 z-20"><X size={20}/></button>
                 
                 {/* Header */}

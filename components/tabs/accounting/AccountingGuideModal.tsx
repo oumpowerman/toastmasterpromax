@@ -55,8 +55,8 @@ const AccountingGuideModal: React.FC<AccountingGuideModalProps> = ({ isOpen, onC
                     <p>เจอปัญหาบิลเดียวมีทั้ง "ของสด" และ "น้ำยาล้างจาน" ใช่ไหมครับ?</p>
                     <p>ใช้ปุ่ม <span className="bg-stone-100 px-1.5 py-0.5 rounded font-bold text-stone-700">Split Mode</span> ในหน้าบันทึกรายจ่าย เพื่อระบุหมวดหมู่ให้แต่ละรายการแยกกันได้เลย</p>
                     <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
-                        <div className="bg-orange-50 p-2 rounded border border-orange-100 text-center">หมู/ไก่ <br/><span className="font-bold text-orange-600">-▶ วัตถุดิบ</span></div>
-                        <div className="bg-stone-100 p-2 rounded border border-stone-200 text-center">ทิชชู่ <br/><span className="font-bold text-stone-600">-▶ ของใช้</span></div>
+                        <div className="bg-orange-50 p-2 rounded border border-orange-100 text-center">หมู/ไก่ <br/><span className="font-bold text-orange-600">{"->"} วัตถุดิบ</span></div>
+                        <div className="bg-stone-100 p-2 rounded border border-stone-200 text-center">ทิชชู่ <br/><span className="font-bold text-stone-600">{"->"} ของใช้</span></div>
                     </div>
                 </div>
             )

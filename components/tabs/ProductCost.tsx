@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChefHat, Archive, ChevronDown, MousePointerClick, Tag, FlaskConical, AlertTriangle, HelpCircle } from 'lucide-react';
+import { ChefHat, Archive, ChevronDown, MousePointerClick, Tag, FlaskConical, AlertTriangle, HelpCircle, FileText } from 'lucide-react';
 import { AppState, MenuItem, IngredientLibraryItem, IngredientItem } from '../../types';
 import { useAlert } from '../AlertSystem';
 import { uploadImage } from '../../lib/supabase';
@@ -18,6 +18,7 @@ import ProductGuideModal from './product/ProductGuideModal';
 import MenuSelectorModal from '../modals/MenuSelectorModal';
 import PantryManagerModal from '../modals/PantryManagerModal';
 import IngredientPickerModal from '../modals/IngredientPickerModal';
+import ProductSummaryModal from '../modals/ProductSummaryModal';
 
 interface ProductCostProps {
   state: AppState;
@@ -64,6 +65,7 @@ const ProductCost: React.FC<ProductCostProps> = ({
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [showPantryModal, setShowPantryModal] = useState(false);
   const [showPantryPicker, setShowPantryPicker] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showGuide, setShowGuide] = useState(false); // NEW: Guide State
   
   // Analysis Detail State
@@ -204,6 +206,14 @@ const ProductCost: React.FC<ProductCostProps> = ({
              </div>
 
              <div className="flex items-center gap-3">
+                 {/* Summary Button */}
+                 <button 
+                    onClick={() => setShowSummaryModal(true)}
+                    className="flex items-center gap-2 bg-white border-2 border-stone-100 text-stone-600 px-5 py-2.5 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all font-bold text-sm font-cute"
+                 >
+                     <FileText size={18} className="text-orange-500" /> สรุปภาพรวม
+                 </button>
+
                  {/* Pantry Button */}
                  <button 
                     onClick={() => setShowPantryModal(true)}
@@ -272,6 +282,12 @@ const ProductCost: React.FC<ProductCostProps> = ({
             centralIngredients={state.centralIngredients}
             onPick={handlePickFromPantry}
             onOpenPantry={() => { setShowPantryPicker(false); setShowPantryModal(true); }}
+        />
+
+        <ProductSummaryModal 
+            isOpen={showSummaryModal}
+            onClose={() => setShowSummaryModal(false)}
+            state={state}
         />
 
         {/* --- MAIN WORKSPACE --- */}
